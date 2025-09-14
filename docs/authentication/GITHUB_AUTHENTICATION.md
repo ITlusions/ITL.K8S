@@ -21,35 +21,16 @@ This guide shows how to set up GitHub authentication for a bare metal Kubernetes
 
 ## Authentication Methods
 
-For bare metal Kubernetes deployments, choose the method that best fits your infrastructure:
+For bare metal Kubernetes deployments, we use Keycloak as the OIDC provider that integrates with GitHub:
 
 | Method | Use Case | Complexity | Best For |
 |--------|----------|------------|----------|
-| **Direct OIDC** | Simple bare metal clusters | Low | Direct GitHub integration |
-| **Dex Proxy** | Multi-provider setup | Medium | Enterprise environments with multiple auth sources |
+| **Keycloak OIDC** | GitHub integration via Keycloak | Medium | Centralized identity management with GitHub teams |
 | **GitHub Actions** | CI/CD automation | Low | Automated deployments and GitOps |
 
-## Method 1: Direct OIDC Integration
+## Method 1: Keycloak OIDC Integration
 
-This method configures the Kubernetes API server to use GitHub as an OIDC provider directly.
-
-### Step 1: Create GitHub OAuth Application
-
-1. **Navigate to GitHub Organization Settings**
-   ```
-   https://github.com/organizations/ITlusions/settings/applications
-   ```
-
-2. **Create New OAuth App**
-   - Click **"New OAuth App"**
-   - Fill in application details:
-
-   ```
-   Application name: Kubernetes Cluster Authentication
-   Homepage URL: https://k8s.itlusions.nl
-   Description: Authentication for ITlusions Kubernetes clusters
-   Authorization callback URL: https://k8s.itlusions.nl/oauth/callback
-   ```
+This method configures Kubernetes to use Keycloak as the OIDC provider, which integrates with GitHub for authentication.
 
 ## Step 1: Configure GitHub Identity Provider in Keycloak
 
@@ -118,83 +99,6 @@ The API server will restart automatically. Check it's running:
 kubectl get pods -n kube-system | grep apiserver
 ```
 
-Dex acts as an OIDC proxy that can aggregate multiple authentication providers.
-
-### Step 1: Deploy Dex
-
-```yaml
-# dex-namespace.yaml
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: auth-system
----
-# dex-configmap.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: dex-config
-  namespace: auth-system
-data:
-  config.yaml: |
-    issuer: https://dex.k8s.itlusions.nl
-    
-    storage:
-      type: kubernetes
-      config:
-        inCluster: true
-    
-    web:
-      http: 0.0.0.0:5556
-      tlsCert: /etc/dex/tls/tls.crt
-      tlsKey: /etc/dex/tls/tls.key
-    
-    connectors:
-    - type: github
-      id: github
-      name: GitHub
-      config:
-        clientID: your-github-client-id
-        clientSecret: your-github-client-secret
-        redirectURI: https://dex.k8s.itlusions.nl/callback
-        orgs:
-        - name: ITlusions
-          teams:
-          - Admins
-          - Developers
-          - DevOps
-          - Readonly
-    
-    oauth2:
-      skipApprovalScreen: true
-      
-    staticClients:
-    - id: kubernetes
-      redirectURIs:
-      - 'urn:ietf:wg:oauth:2.0:oob'
-      - 'http://localhost:8000'
-      - 'http://localhost:18000'
-      name: 'Kubernetes CLI'
-      secret: kubernetes-client-secret
-      
-    enablePasswordDB: false
----
-# dex-deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: dex
-  namespace: auth-system
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: dex
-  template:
-    metadata:
-      labels:
-        app: dex
-    spec:
 ## Step 5: Create Team-based RBAC
 
 Map your Keycloak groups to Kubernetes roles:
@@ -250,134 +154,448 @@ Apply the RBAC configuration:
 ```bash
 kubectl apply -f rbac.yaml
 ```
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: dex
-            port:
-              number: 5556
-```
 
-## Method 3: GitHub Actions OIDC
+## Method 2: GitHub Actions Secure Kubernetes Access
 
-For CI/CD workflows on bare metal clusters, GitHub Actions can use OIDC to authenticate with Kubernetes using service accounts.
+For CI/CD workflows on bare metal clusters, GitHub Actions can securely authenticate with Kubernetes using multiple approaches. This section covers secure methods to access the Kubernetes API from GitHub Actions workflows.
 
-### Step 1: Create Service Account for GitHub Actions
+### Approach 1: Service Account with Token-based Authentication
+
+This approach uses Kubernetes service accounts with time-limited tokens for secure access.
+
+#### Step 1: Create Service Account with Minimal Permissions
 
 ```yaml
 # github-actions-rbac.yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: github-actions
-  namespace: default
+  name: github-actions-deployer
+  namespace: ci-cd
   annotations:
-    # Optional: restrict to specific GitHub repository
+    # Restrict to specific GitHub repository for security
     github.com/repository: "ITlusions/your-repo"
+    github.com/organization: "ITlusions"
+---
+# Create namespace-specific role instead of cluster-wide admin
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ci-cd
+  name: github-actions-deployer-role
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "secrets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: RoleBinding
 metadata:
-  name: github-actions-binding
+  name: github-actions-deployer-binding
+  namespace: ci-cd
 subjects:
 - kind: ServiceAccount
-  name: github-actions
-  namespace: default
+  name: github-actions-deployer
+  namespace: ci-cd
 roleRef:
-  kind: ClusterRole
-  name: admin  # Adjust permissions as needed
+  kind: Role
+  name: github-actions-deployer-role
   apiGroup: rbac.authorization.k8s.io
 ---
 # Create a secret for the service account token (K8s 1.24+)
 apiVersion: v1
 kind: Secret
 metadata:
-  name: github-actions-token
-## Step 5: Setup Client Access
+  name: github-actions-deployer-token
+  namespace: ci-cd
+  annotations:
+    kubernetes.io/service-account.name: github-actions-deployer
+type: kubernetes.io/service-account-token
+```
 
-Install and configure kubectl with OIDC:
+Apply the configuration:
+```bash
+# Create namespace first
+kubectl create namespace ci-cd
+
+# Apply RBAC configuration
+kubectl apply -f github-actions-rbac.yaml
+```
+
+#### Step 2: Extract Service Account Token Securely
 
 ```bash
-# Install kubectl-oidc plugin
-kubectl krew install oidc-login
+# Get the service account token
+TOKEN=$(kubectl get secret github-actions-deployer-token -n ci-cd -o jsonpath='{.data.token}' | base64 -d)
 
-# Create kubeconfig for users
-cat > ~/.kube/config-github << EOF
+# Get cluster CA certificate
+CLUSTER_CA=$(kubectl get secret github-actions-deployer-token -n ci-cd -o jsonpath='{.data.ca\.crt}')
+
+# Get cluster server URL
+CLUSTER_SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
+
+echo "Add these to your GitHub repository secrets:"
+echo "KUBE_TOKEN: $TOKEN"
+echo "KUBE_CA_CERT: $CLUSTER_CA"
+echo "KUBE_SERVER: $CLUSTER_SERVER"
+```
+
+#### Step 3: Configure Secure GitHub Actions Workflow
+
+```yaml
+# .github/workflows/secure-deploy.yml
+name: Secure Deploy to Kubernetes
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Use minimal permissions for GitHub token
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  security-checks:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run security scanning
+      run: |
+        # Add your security scanning tools here
+        echo "Running security checks..."
+        
+    - name: Validate Kubernetes manifests
+      run: |
+        # Validate YAML syntax and security policies
+        find k8s/ -name "*.yaml" -o -name "*.yml" | xargs -I {} kubectl --dry-run=client apply -f {}
+
+  deploy:
+    needs: security-checks
+    runs-on: ubuntu-latest
+    # Only run on main branch for production deployments
+    if: github.ref == 'refs/heads/main'
+    environment: production  # Use GitHub environments for additional protection
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.28.0'  # Pin specific version for consistency
+    
+    - name: Configure kubectl securely
+      env:
+        KUBE_TOKEN: ${{ secrets.KUBE_TOKEN }}
+        KUBE_CA_CERT: ${{ secrets.KUBE_CA_CERT }}
+        KUBE_SERVER: ${{ secrets.KUBE_SERVER }}
+      run: |
+        # Create secure kubeconfig
+        mkdir -p ~/.kube
+        
+        # Write CA certificate to file
+        echo "$KUBE_CA_CERT" | base64 -d > ~/.kube/ca.crt
+        
+        # Create kubeconfig with token authentication
+        kubectl config set-cluster kubernetes \
+          --server="$KUBE_SERVER" \
+          --certificate-authority=~/.kube/ca.crt
+        
+        kubectl config set-credentials github-actions \
+          --token="$KUBE_TOKEN"
+        
+        kubectl config set-context github-actions \
+          --cluster=kubernetes \
+          --user=github-actions \
+          --namespace=ci-cd
+        
+        kubectl config use-context github-actions
+        
+        # Test connection
+        kubectl auth can-i get pods -n ci-cd
+    
+    - name: Deploy to cluster
+      run: |
+        # Apply manifests with explicit namespace
+        kubectl apply -f k8s/ -n ci-cd
+        
+        # Wait for rollout to complete
+        kubectl rollout status deployment/your-app -n ci-cd --timeout=300s
+        
+        # Verify deployment
+        kubectl get pods -n ci-cd -l app=your-app
+    
+    - name: Cleanup sensitive files
+      if: always()
+      run: |
+        rm -f ~/.kube/ca.crt
+        rm -f ~/.kube/config
+```
+
+### Approach 2: GitHub OIDC with Workload Identity
+
+For enhanced security, use GitHub's OIDC provider to authenticate without long-lived tokens.
+
+#### Step 1: Configure OIDC Trust Relationship
+
+```yaml
+# github-oidc-rbac.yaml
 apiVersion: v1
-kind: Config
-clusters:
-- cluster:
-    server: https://your-cluster-api:6443
-    certificate-authority-data: <your-cluster-ca-cert>
-  name: kubernetes
-contexts:
-- context:
-    cluster: kubernetes
-    user: github-user
-  name: github-auth
-current-context: github-auth
-users:
-- name: github-user
-  user:
-    exec:
-      apiVersion: client.authentication.k8s.io/v1beta1
-      command: kubectl
-      args:
-      - oidc-login
-      - get-token
-      - --oidc-issuer-url=https://dex.your-cluster-domain
-      - --oidc-client-id=kubernetes
-      - --oidc-client-secret=kubernetes-client-secret
+kind: ServiceAccount
+metadata:
+  name: github-oidc-deployer
+  namespace: ci-cd
+  annotations:
+    # Map to GitHub OIDC claims
+    github.com/repository: "ITlusions/your-repo"
+    github.com/actor: "github-actions[bot]"
+    github.com/workflow: "deploy"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ci-cd
+  name: github-oidc-deployer-role
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: github-oidc-deployer-binding
+  namespace: ci-cd
+subjects:
+- kind: ServiceAccount
+  name: github-oidc-deployer
+  namespace: ci-cd
+roleRef:
+  kind: Role
+  name: github-oidc-deployer-role
+  apiGroup: rbac.authorization.k8s.io
+```
+
+#### Step 2: Configure API Server for GitHub OIDC (requires cluster admin)
+
+Add these flags to your API server configuration:
+
+```yaml
+# Add to /etc/kubernetes/manifests/kube-apiserver.yaml
+spec:
+  containers:
+  - command:
+    - kube-apiserver
+    # ... other flags ...
+    - --oidc-issuer-url=https://token.actions.githubusercontent.com
+    - --oidc-client-id=sts.amazonaws.com  # or your custom audience
+    - --oidc-username-claim=actor
+    - --oidc-groups-claim=repository
+    - --oidc-username-prefix=github:
+    - --oidc-groups-prefix=github:
+```
+
+#### Step 3: GitHub Actions Workflow with OIDC
+
+```yaml
+# .github/workflows/oidc-deploy.yml
+name: OIDC Deploy to Kubernetes
+on:
+  push:
+    branches: [main]
+
+# Required permissions for OIDC
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Configure AWS credentials (if using AWS for intermediate auth)
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::ACCOUNT:role/GitHubOIDC
+        aws-region: us-west-2
+        
+    - name: Get OIDC token
+      id: oidc
+      run: |
+        # Get GitHub OIDC token
+        OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+          "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=kubernetes" | jq -r .value)
+        echo "token=$OIDC_TOKEN" >> $GITHUB_OUTPUT
+        
+    - name: Deploy with OIDC token
+      env:
+        OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+        KUBE_SERVER: ${{ secrets.KUBE_SERVER }}
+        KUBE_CA_CERT: ${{ secrets.KUBE_CA_CERT }}
+      run: |
+        # Configure kubectl with OIDC token
+        kubectl config set-cluster kubernetes \
+          --server="$KUBE_SERVER" \
+          --certificate-authority-data="$KUBE_CA_CERT"
+        
+        kubectl config set-credentials github-oidc \
+          --token="$OIDC_TOKEN"
+        
+        kubectl config set-context github-oidc \
+          --cluster=kubernetes \
+          --user=github-oidc \
+          --namespace=ci-cd
+        
+        kubectl config use-context github-oidc
+        
+        # Deploy
+        kubectl apply -f k8s/ -n ci-cd
+```
+
+### Security Best Practices for GitHub Actions
+
+#### 1. Secrets Management
+
+```yaml
+# Store sensitive data in GitHub secrets, not in code
+secrets:
+  KUBE_TOKEN: ${{ secrets.KUBE_TOKEN }}
+  KUBE_CA_CERT: ${{ secrets.KUBE_CA_CERT }}
+  KUBE_SERVER: ${{ secrets.KUBE_SERVER }}
+  REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+```
+
+#### 2. Environment Protection
+
+Configure GitHub environments with protection rules:
+- Required reviewers for production deployments
+- Deployment branches restriction
+- Environment secrets scope
+
+#### 3. Network Security
+
+```yaml
+# Restrict egress from GitHub Actions runners
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: github-actions-network-policy
+  namespace: ci-cd
+spec:
+  podSelector:
+    matchLabels:
+      deployed-by: github-actions
+  policyTypes:
+  - Egress
+  egress:
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443  # HTTPS only
+```
+
+#### 4. Audit and Monitoring
+
+```bash
+# Monitor GitHub Actions deployments
+kubectl logs -n ci-cd -l app=your-app | grep "github-actions"
+
+# Audit service account usage
+kubectl get events -n ci-cd --field-selector involvedObject.kind=ServiceAccount
+
+# Check RBAC permissions
+kubectl auth can-i --list --as=system:serviceaccount:ci-cd:github-actions-deployer -n ci-cd
+```
+
+#### 5. Token Rotation
+
+```bash
+#!/bin/bash
+# Script to rotate GitHub Actions service account tokens
+NAMESPACE="ci-cd"
+SA_NAME="github-actions-deployer"
+SECRET_NAME="github-actions-deployer-token"
+
+# Delete existing secret
+kubectl delete secret $SECRET_NAME -n $NAMESPACE
+
+# Create new secret
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: $SECRET_NAME
+  namespace: $NAMESPACE
+  annotations:
+    kubernetes.io/service-account.name: $SA_NAME
+type: kubernetes.io/service-account-token
 EOF
+
+# Wait for token generation
+sleep 5
+
+# Get new token
+NEW_TOKEN=$(kubectl get secret $SECRET_NAME -n $NAMESPACE -o jsonpath='{.data.token}' | base64 -d)
+echo "New token: $NEW_TOKEN"
+echo "Update your GitHub secrets with this new token"
 ```
 
-## Testing the Setup
+#### 6. Least Privilege Access
 
-Test authentication:
-```bash
-# Use the GitHub auth kubeconfig
-export KUBECONFIG=~/.kube/config-github
+```yaml
+# Example of minimal permissions for different deployment scenarios
 
-# This will open browser for GitHub login
-kubectl get nodes
+# For applications that only need to update their own deployment
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: production
+  name: app-deployer
+rules:
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  resourceNames: ["my-app"]  # Restrict to specific deployment
+  verbs: ["get", "update", "patch"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]  # Read-only for status checks
 
-# Check your permissions
-kubectl auth can-i get pods
-kubectl auth can-i delete pods
+---
+# For infrastructure deployments
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: infrastructure
+  name: infra-deployer
+rules:
+- apiGroups: [""]
+  resources: ["services", "configmaps", "secrets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "daemonsets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies", "ingresses"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 ```
 
-## Common Issues
-
-**Problem**: "Unable to connect to OIDC provider"  
-**Solution**: Check that Dex is running and accessible from your cluster
-
-**Problem**: "User not found"  
-**Solution**: Verify the user is a member of the specified GitHub organization
-
-**Problem**: "Access denied"  
-**Solution**: Check the RBAC configuration matches your GitHub teams
-
-
-
-# Check for authorization decisions
-kubectl logs -n kube-system kube-apiserver-master-node | grep -i rbac
-
-# Monitor Dex logs (if using Dex)
-kubectl logs -n auth-system deployment/dex -f
-```
-
-### Step 4: Test Different User Scenarios
-
-```bash
-# Test admin user
-kubectl get nodes --as=github:admin@itlusions.nl --as-group=github:ITlusions:Admins
-
-# Test developer user
-kubectl get pods -n development --as=github:dev@itlusions.nl --as-group=github:ITlusions:Developers
-
-## Step 6: Setup Client Access
+## Setup Client Access for Keycloak Authentication
 
 Install and configure kubectl with OIDC:
 
@@ -411,7 +629,7 @@ users:
       - get-token
       - --oidc-issuer-url=https://keycloak.your-domain/realms/kubernetes
       - --oidc-client-id=kubernetes
-      - --oidc-client-secret=<your-keycloak-client-secret>
+      - --oidc-client-secret=kubernetes-client-secret
 EOF
 ```
 
@@ -436,41 +654,21 @@ kubectl auth can-i delete pods
 **Solution**: Check that Keycloak is running and accessible from your cluster
 
 **Problem**: "User not found"  
-**Solution**: Verify the user authenticated through GitHub in Keycloak and groups are mapped correctly
+**Solution**: Verify the user is a member of the specified GitHub organization
 
 **Problem**: "Access denied"  
-**Solution**: Check the RBAC configuration matches your Keycloak groups
+**Solution**: Check the RBAC configuration matches your GitHub teams
+
+
+
+# Check for authorization decisions
+kubectl logs -n kube-system kube-apiserver-master-node | grep -i rbac
+
+# Monitor Keycloak logs  
+kubectl logs -n keycloak deployment/keycloak -f
+```
 
 That's it! Your bare metal Kubernetes cluster now authenticates users via GitHub through Keycloak with team-based authorization.
-
-#!/bin/bash
-
-echo "=== Kubernetes OIDC Debugging ==="
-
-echo "1. Checking API Server OIDC Configuration..."
-kubectl get pods -n kube-system -l component=kube-apiserver -o yaml | grep -A 20 -B 5 oidc
-
-echo "2. Testing OIDC Discovery..."
-curl -s https://token.actions.githubusercontent.com/.well-known/openid_configuration | jq .
-
-echo "3. Checking RBAC Bindings..."
-kubectl get clusterrolebindings | grep github
-kubectl get rolebindings -A | grep github
-
-echo "4. Testing Authentication..."
-kubectl auth whoami 2>&1
-
-echo "5. Testing Authorization..."
-kubectl auth can-i --list 2>&1
-
-echo "6. Checking Recent Events..."
-kubectl get events --sort-by='.lastTimestamp' | grep -i auth
-
-echo "7. API Server Logs (last 50 lines)..."
-kubectl logs -n kube-system -l component=kube-apiserver --tail=50 | grep -i "oidc\|auth\|rbac"
-
-echo "=== End Debug Information ==="
-```
 
 ### Emergency Access
 
