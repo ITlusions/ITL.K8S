@@ -21,35 +21,16 @@ This guide shows how to set up GitHub authentication for a bare metal Kubernetes
 
 ## Authentication Methods
 
-For bare metal Kubernetes deployments, choose the method that best fits your infrastructure:
+For bare metal Kubernetes deployments, we use Keycloak as the OIDC provider that integrates with GitHub:
 
 | Method | Use Case | Complexity | Best For |
 |--------|----------|------------|----------|
-| **Direct OIDC** | Simple bare metal clusters | Low | Direct GitHub integration |
-| **Dex Proxy** | Multi-provider setup | Medium | Enterprise environments with multiple auth sources |
+| **Keycloak OIDC** | GitHub integration via Keycloak | Medium | Centralized identity management with GitHub teams |
 | **GitHub Actions** | CI/CD automation | Low | Automated deployments and GitOps |
 
-## Method 1: Direct OIDC Integration
+## Method 1: Keycloak OIDC Integration
 
-This method configures the Kubernetes API server to use GitHub as an OIDC provider directly.
-
-### Step 1: Create GitHub OAuth Application
-
-1. **Navigate to GitHub Organization Settings**
-   ```
-   https://github.com/organizations/ITlusions/settings/applications
-   ```
-
-2. **Create New OAuth App**
-   - Click **"New OAuth App"**
-   - Fill in application details:
-
-   ```
-   Application name: Kubernetes Cluster Authentication
-   Homepage URL: https://k8s.itlusions.nl
-   Description: Authentication for ITlusions Kubernetes clusters
-   Authorization callback URL: https://k8s.itlusions.nl/oauth/callback
-   ```
+This method configures Kubernetes to use Keycloak as the OIDC provider, which integrates with GitHub for authentication.
 
 ## Step 1: Configure GitHub Identity Provider in Keycloak
 
@@ -118,83 +99,6 @@ The API server will restart automatically. Check it's running:
 kubectl get pods -n kube-system | grep apiserver
 ```
 
-Dex acts as an OIDC proxy that can aggregate multiple authentication providers.
-
-### Step 1: Deploy Dex
-
-```yaml
-# dex-namespace.yaml
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: auth-system
----
-# dex-configmap.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: dex-config
-  namespace: auth-system
-data:
-  config.yaml: |
-    issuer: https://dex.k8s.itlusions.nl
-    
-    storage:
-      type: kubernetes
-      config:
-        inCluster: true
-    
-    web:
-      http: 0.0.0.0:5556
-      tlsCert: /etc/dex/tls/tls.crt
-      tlsKey: /etc/dex/tls/tls.key
-    
-    connectors:
-    - type: github
-      id: github
-      name: GitHub
-      config:
-        clientID: your-github-client-id
-        clientSecret: your-github-client-secret
-        redirectURI: https://dex.k8s.itlusions.nl/callback
-        orgs:
-        - name: ITlusions
-          teams:
-          - Admins
-          - Developers
-          - DevOps
-          - Readonly
-    
-    oauth2:
-      skipApprovalScreen: true
-      
-    staticClients:
-    - id: kubernetes
-      redirectURIs:
-      - 'urn:ietf:wg:oauth:2.0:oob'
-      - 'http://localhost:8000'
-      - 'http://localhost:18000'
-      name: 'Kubernetes CLI'
-      secret: kubernetes-client-secret
-      
-    enablePasswordDB: false
----
-# dex-deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: dex
-  namespace: auth-system
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: dex
-  template:
-    metadata:
-      labels:
-        app: dex
-    spec:
 ## Step 5: Create Team-based RBAC
 
 Map your Keycloak groups to Kubernetes roles:
@@ -250,17 +154,8 @@ Apply the RBAC configuration:
 ```bash
 kubectl apply -f rbac.yaml
 ```
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: dex
-            port:
-              number: 5556
-```
 
-## Method 3: GitHub Actions OIDC
+## Method 2: GitHub Actions OIDC
 
 For CI/CD workflows on bare metal clusters, GitHub Actions can use OIDC to authenticate with Kubernetes using service accounts.
 
@@ -295,89 +190,52 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: github-actions-token
-## Step 5: Setup Client Access
-
-Install and configure kubectl with OIDC:
-
-```bash
-# Install kubectl-oidc plugin
-kubectl krew install oidc-login
-
-# Create kubeconfig for users
-cat > ~/.kube/config-github << EOF
-apiVersion: v1
-kind: Config
-clusters:
-- cluster:
-    server: https://your-cluster-api:6443
-    certificate-authority-data: <your-cluster-ca-cert>
-  name: kubernetes
-contexts:
-- context:
-    cluster: kubernetes
-    user: github-user
-  name: github-auth
-current-context: github-auth
-users:
-- name: github-user
-  user:
-    exec:
-      apiVersion: client.authentication.k8s.io/v1beta1
-      command: kubectl
-      args:
-      - oidc-login
-      - get-token
-      - --oidc-issuer-url=https://dex.your-cluster-domain
-      - --oidc-client-id=kubernetes
-      - --oidc-client-secret=kubernetes-client-secret
-EOF
+  namespace: default
+  annotations:
+    kubernetes.io/service-account.name: github-actions
+type: kubernetes.io/service-account-token
 ```
 
-## Testing the Setup
-
-Test authentication:
+Apply the configuration:
 ```bash
-# Use the GitHub auth kubeconfig
-export KUBECONFIG=~/.kube/config-github
-
-# This will open browser for GitHub login
-kubectl get nodes
-
-# Check your permissions
-kubectl auth can-i get pods
-kubectl auth can-i delete pods
+kubectl apply -f github-actions-rbac.yaml
 ```
 
-## Common Issues
+### Step 2: Configure GitHub Actions Workflow
 
-**Problem**: "Unable to connect to OIDC provider"  
-**Solution**: Check that Dex is running and accessible from your cluster
+Use the service account token in your GitHub Actions workflow:
 
-**Problem**: "User not found"  
-**Solution**: Verify the user is a member of the specified GitHub organization
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy to Kubernetes
+on:
+  push:
+    branches: [main]
 
-**Problem**: "Access denied"  
-**Solution**: Check the RBAC configuration matches your GitHub teams
-
-
-
-# Check for authorization decisions
-kubectl logs -n kube-system kube-apiserver-master-node | grep -i rbac
-
-# Monitor Dex logs (if using Dex)
-kubectl logs -n auth-system deployment/dex -f
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up kubectl
+      run: |
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+        chmod +x kubectl
+        sudo mv kubectl /usr/local/bin/
+    
+    - name: Deploy to cluster
+      env:
+        KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
+        KUBE_TOKEN: ${{ secrets.KUBE_TOKEN }}
+      run: |
+        echo "$KUBE_CONFIG_DATA" | base64 -d > kubeconfig
+        export KUBECONFIG=kubeconfig
+        kubectl --token="$KUBE_TOKEN" get nodes
+        kubectl --token="$KUBE_TOKEN" apply -f k8s/
 ```
 
-### Step 4: Test Different User Scenarios
-
-```bash
-# Test admin user
-kubectl get nodes --as=github:admin@itlusions.nl --as-group=github:ITlusions:Admins
-
-# Test developer user
-kubectl get pods -n development --as=github:dev@itlusions.nl --as-group=github:ITlusions:Developers
-
-## Step 6: Setup Client Access
+## Setup Client Access for Keycloak Authentication
 
 Install and configure kubectl with OIDC:
 
@@ -411,7 +269,7 @@ users:
       - get-token
       - --oidc-issuer-url=https://keycloak.your-domain/realms/kubernetes
       - --oidc-client-id=kubernetes
-      - --oidc-client-secret=<your-keycloak-client-secret>
+      - --oidc-client-secret=kubernetes-client-secret
 EOF
 ```
 
@@ -436,41 +294,21 @@ kubectl auth can-i delete pods
 **Solution**: Check that Keycloak is running and accessible from your cluster
 
 **Problem**: "User not found"  
-**Solution**: Verify the user authenticated through GitHub in Keycloak and groups are mapped correctly
+**Solution**: Verify the user is a member of the specified GitHub organization
 
 **Problem**: "Access denied"  
-**Solution**: Check the RBAC configuration matches your Keycloak groups
+**Solution**: Check the RBAC configuration matches your GitHub teams
+
+
+
+# Check for authorization decisions
+kubectl logs -n kube-system kube-apiserver-master-node | grep -i rbac
+
+# Monitor Keycloak logs  
+kubectl logs -n keycloak deployment/keycloak -f
+```
 
 That's it! Your bare metal Kubernetes cluster now authenticates users via GitHub through Keycloak with team-based authorization.
-
-#!/bin/bash
-
-echo "=== Kubernetes OIDC Debugging ==="
-
-echo "1. Checking API Server OIDC Configuration..."
-kubectl get pods -n kube-system -l component=kube-apiserver -o yaml | grep -A 20 -B 5 oidc
-
-echo "2. Testing OIDC Discovery..."
-curl -s https://token.actions.githubusercontent.com/.well-known/openid_configuration | jq .
-
-echo "3. Checking RBAC Bindings..."
-kubectl get clusterrolebindings | grep github
-kubectl get rolebindings -A | grep github
-
-echo "4. Testing Authentication..."
-kubectl auth whoami 2>&1
-
-echo "5. Testing Authorization..."
-kubectl auth can-i --list 2>&1
-
-echo "6. Checking Recent Events..."
-kubectl get events --sort-by='.lastTimestamp' | grep -i auth
-
-echo "7. API Server Logs (last 50 lines)..."
-kubectl logs -n kube-system -l component=kube-apiserver --tail=50 | grep -i "oidc\|auth\|rbac"
-
-echo "=== End Debug Information ==="
-```
 
 ### Emergency Access
 
