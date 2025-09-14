@@ -1,0 +1,34 @@
+# OpenEBS Hostpath Storage Class (Default)
+# Purpose: Local node storage using host filesystem paths
+# Use Case: Local volumes, temporary storage, and node-specific data
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: openebs-hostpath
+  labels:
+    app.kubernetes.io/instance: openebs
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+    cas.openebs.io/config: |
+      - name: StorageType
+        value: "hostpath"
+      - name: BasePath
+        value: "/var/openebs/local"
+    openebs.io/cas-type: local
+    description: "Local hostpath storage on each node"
+    use-case: "Node-local storage, temporary volumes, and single-node applications"
+    provisioner-type: "OpenEBS local hostpath"
+provisioner: openebs.io/local
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer  # Ensures pod and volume are on same node
+allowVolumeExpansion: false
+
+# Features:
+# - Default storage class (marked as default)
+# - Local storage on each Kubernetes node
+# - Fast I/O performance (no network overhead)
+# - WaitForFirstConsumer ensures pod/volume co-location
+# - Base path: /var/openebs/local on each node
+# - Ideal for temporary or single-node applications
+# - No volume expansion due to local nature

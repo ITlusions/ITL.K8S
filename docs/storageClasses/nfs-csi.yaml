@@ -1,0 +1,29 @@
+# NFS CSI Storage Class
+# Purpose: Network File System storage for shared access
+# Use Case: Shared volumes accessible from multiple pods/nodes
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-csi
+  annotations:
+    description: "Network File System storage for shared access"
+    use-case: "Shared volumes, configuration files, and multi-pod access"
+    provisioner-type: "NFS CSI driver"
+mountOptions:
+  - nfsvers=4.1  # Use NFSv4.1 protocol
+parameters:
+  server: "10.99.100.3"        # NFS server IP address
+  share: "/mnt/data-lv-01"     # NFS export path
+provisioner: nfs.csi.k8s.io
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+allowVolumeExpansion: false
+
+# Features:
+# - Shared access from multiple pods simultaneously
+# - Network-based storage with remote NFS server
+# - NFSv4.1 protocol for reliability and performance
+# - Immediate binding for quick access
+# - Ideal for configuration files and shared data
+# - No volume expansion due to NFS limitations

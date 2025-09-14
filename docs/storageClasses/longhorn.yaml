@@ -1,0 +1,35 @@
+# Longhorn Default Storage Class
+# Purpose: General-purpose distributed storage for most workloads
+# Use Case: Applications, temporary databases, and general persistent volumes
+
+allowVolumeExpansion: true
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: longhorn
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+    description: "Default distributed storage with automatic replication"
+    use-case: "General applications and non-critical persistent volumes"
+    provisioner-type: "Longhorn distributed storage"
+parameters:
+  numberOfReplicas: "3"                    # High availability with 3 replicas
+  staleReplicaTimeout: "30"               # Timeout for stale replica detection
+  fromBackup: ""                          # No backup restoration by default
+  fsType: "ext4"                          # Linux filesystem type
+  dataLocality: "disabled"                # Data can be stored on any node
+  unmapMarkSnapChainRemoved: "ignored"    # Snapshot chain handling
+  disableRevisionCounter: "true"          # Performance optimization
+  dataEngine: "v1"                        # Longhorn data engine version
+  backupTargetName: "default"             # Default backup target
+provisioner: driver.longhorn.io
+reclaimPolicy: Delete                     # PV is deleted when PVC is deleted
+volumeBindingMode: Immediate              # Volume is bound immediately
+
+# Features:
+# - Default storage class for all new PVCs
+# - Automatic data replication across 3 nodes
+# - Volume expansion supported
+# - Built-in backup capabilities
+# - High performance with optimized settings
+# - Delete policy for automatic cleanup

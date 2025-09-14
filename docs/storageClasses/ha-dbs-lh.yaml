@@ -1,0 +1,28 @@
+# High Availability Database Storage Class
+# Purpose: Production database storage with high availability and data retention
+# Use Case: PostgreSQL, MySQL, MongoDB, and other stateful database workloads
+
+allowVolumeExpansion: true
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ha-dbs-lh
+  labels:
+    app.kubernetes.io/instance: itl-minio-operator
+  annotations:
+    description: "High availability database storage with 3 replicas and retain policy"
+    use-case: "Production databases requiring data persistence and high availability"
+    provisioner-type: "Longhorn distributed storage"
+parameters:
+  numberOfReplicas: "3"      # Ensures high availability across 3 nodes
+  staleReplicaTimeout: "30"  # Timeout for stale replica detection
+provisioner: driver.longhorn.io
+reclaimPolicy: Retain        # Data is preserved even if PVC is deleted
+volumeBindingMode: Immediate # Volume is bound immediately when PVC is created
+
+# Features:
+# - Data survives pod restarts and node failures
+# - Automatic data replication across 3 nodes
+# - Volume expansion supported for growing databases
+# - Retain policy prevents accidental data loss
+# - Immediate binding for predictable storage allocation

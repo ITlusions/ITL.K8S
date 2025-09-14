@@ -1,0 +1,31 @@
+# MinIO Data Storage Class
+# Purpose: Local storage optimized for MinIO object storage
+# Use Case: MinIO tenant data storage on dedicated paths
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: minio-data
+  labels:
+    app.kubernetes.io/instance: itl-minio-operator
+  annotations:
+    cas.openebs.io/config: |
+      - name: StorageType
+        value: "hostpath"
+      - name: BasePath
+        value: "/mnt/data-lv-01/minio"
+    openebs.io/cas-type: local
+    description: "Local hostpath storage for MinIO object storage"
+    use-case: "MinIO tenant data storage with dedicated disk paths"
+    provisioner-type: "OpenEBS local hostpath"
+provisioner: openebs.io/local
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer  # Waits for pod scheduling
+allowVolumeExpansion: false
+
+# Features:
+# - Dedicated path /mnt/data-lv-01/minio for MinIO data
+# - Local storage for high performance
+# - WaitForFirstConsumer ensures proper node affinity
+# - Optimized for object storage workloads
+# - No volume expansion to maintain performance characteristics

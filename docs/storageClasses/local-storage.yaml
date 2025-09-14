@@ -1,0 +1,29 @@
+# Local Storage Class
+# Purpose: Manually provisioned local storage volumes
+# Use Case: Pre-created local volumes and manual storage management
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-storage
+  annotations:
+    description: "Manually provisioned local storage volumes"
+    use-case: "Pre-created volumes, manual storage management, and specific node storage"
+    provisioner-type: "No automatic provisioner (manual)"
+provisioner: kubernetes.io/no-provisioner  # No automatic provisioning
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer    # Waits for pod to be scheduled
+allowVolumeExpansion: false
+
+# Features:
+# - Requires manual PersistentVolume creation
+# - No automatic provisioning (admin must create PVs)
+# - WaitForFirstConsumer ensures proper node binding
+# - Useful for specific hardware or pre-allocated storage
+# - Full control over storage location and configuration
+# - No volume expansion due to manual nature
+
+# Usage Example:
+# 1. Admin creates PersistentVolume manually
+# 2. User creates PersistentVolumeClaim with this storage class
+# 3. Kubernetes binds the PVC to existing PV when pod is scheduled

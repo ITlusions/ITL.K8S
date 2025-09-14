@@ -1,0 +1,25 @@
+# Longhorn Static Storage Class
+# Purpose: Static Longhorn volumes with minimal configuration
+# Use Case: Pre-provisioned volumes or specific storage requirements
+
+allowVolumeExpansion: true
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: longhorn-static
+  annotations:
+    description: "Simplified Longhorn storage for static volumes"
+    use-case: "Pre-provisioned volumes or basic storage needs"
+    provisioner-type: "Longhorn distributed storage"
+parameters:
+  staleReplicaTimeout: "30"  # Only essential parameter configured
+provisioner: driver.longhorn.io
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+
+# Features:
+# - Minimal configuration for simple use cases
+# - Volume expansion supported
+# - Uses Longhorn default replica settings
+# - Immediate binding for quick provisioning
+# - Delete policy for automatic cleanup
