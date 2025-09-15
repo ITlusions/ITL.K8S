@@ -1,6 +1,4 @@
-# ITL.K8s - Kubernetes 4. **🚨 Review [Emergency Access](docs/authentication/EMERGENCY_ACCESS.md)** - Understand break glass proceduresnfrastructure Documentation
-
-> 🚀 **Comprehensive Kubernetes infrastructure documentation and configuration management for ITlusions**
+# ITL.K8s - Kubernetes 
 
 Welcome to the ITlusions Kubernetes (ITL.K8s) documentation repository. This repository serves as the central hub for all Kubernetes-related documentation, best practices, configurations, and operational guides.
 

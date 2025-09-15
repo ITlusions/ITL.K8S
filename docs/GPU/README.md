@@ -21,9 +21,11 @@ New to AMD GPU on Kubernetes? Follow this sequence:
 4. **[Verify installation](AMD_GPU_INSTALLATION.md#verification-and-testing)** with test workloads
 5. **[Monitor and troubleshoot](AMD_GPU_TROUBLESHOOTING.md)** as needed
 
-## ⚠️ Common Issue Alert
+## ⚠️ Common Issue Alerts
 
 **Are you seeing "Could not find cuda drivers" with AMD GPUs?** This means you're using a CUDA-based TensorFlow image instead of ROCm. See the [Container Image Issues section](AMD_GPU_TROUBLESHOOTING.md#container-image-issues) for the solution.
+
+**Pod stuck in "ContainerCreating" status?** ROCm container images are very large (3-8GB). First deployment can take 5-15 minutes depending on your network speed.
 
 ## 🔧 Configuration Summary
 
@@ -85,6 +87,53 @@ kubectl run gpu-test --image=rocm/tensorflow:latest --limits=amd.com/gpu=1 --rm 
 | Device plugin failing | `kubectl logs -n kube-system -l name=amdgpu-device-plugin-ds` | [Device Plugin Debug](AMD_GPU_TROUBLESHOOTING.md#issue-3-device-plugin-not-detecting-gpus) |
 | Pod pending | `kubectl describe pod <name>` | [Scheduling Issues](AMD_GPU_TROUBLESHOOTING.md#issue-5-pod-stuck-in-pending-state) |
 | Container GPU access | `kubectl exec <pod> -- rocm-smi` | [Container Access](AMD_GPU_TROUBLESHOOTING.md#issue-4-container-cannot-access-gpu) |
+
+## 🧪 Quick Testing Examples
+
+### ONNX Runtime Smoke Test
+```yaml
+# Test ONNX Runtime with ResNet-50 inference
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ort-rocm-smoke
+spec:
+  restartPolicy: Never
+  containers:
+  - name: ort
+    image: rocm/onnxruntime:latest
+    command: ["python","-c"]
+    args:
+      - |
+        import onnxruntime as ort
+        print("Providers:", ort.get_available_providers())
+        # Downloads and tests ResNet-50 model
+    resources:
+      limits:
+        amd.com/gpu: "1"
+    volumeMounts:
+      - { name: kfd, mountPath: /dev/kfd }
+      - { name: dri, mountPath: /dev/dri }
+  volumes:
+    - { name: kfd, hostPath: { path: /dev/kfd } }
+    - { name: dri, hostPath: { path: /dev/dri } }
+```
+
+### TensorFlow GPU Test
+```bash
+kubectl run tf-gpu-test --rm -it --restart=Never \
+  --image=rocm/tensorflow:rocm6.3-tf2.16-dev \
+  --overrides='{"spec":{"containers":[{"name":"tf","image":"rocm/tensorflow:rocm6.3-tf2.16-dev","resources":{"limits":{"amd.com/gpu":"1"}},"volumeMounts":[{"name":"kfd","mountPath":"/dev/kfd"},{"name":"dri","mountPath":"/dev/dri"}]}],"volumes":[{"name":"kfd","hostPath":{"path":"/dev/kfd"}},{"name":"dri","hostPath":{"path":"/dev/dri"}}]}}' \
+  -- python -c "import tensorflow as tf; print('GPU:', tf.config.list_physical_devices('GPU'))"
+```
+
+### PyTorch ROCm Test  
+```bash
+kubectl run pytorch-gpu-test --rm -it --restart=Never \
+  --image=rocm/pytorch:latest \
+  --overrides='{"spec":{"containers":[{"name":"pytorch","image":"rocm/pytorch:latest","resources":{"limits":{"amd.com/gpu":"1"}},"volumeMounts":[{"name":"kfd","mountPath":"/dev/kfd"},{"name":"dri","mountPath":"/dev/dri"}]}],"volumes":[{"name":"kfd","hostPath":{"path":"/dev/kfd"}},{"name":"dri","hostPath":{"path":"/dev/dri"}}]}}' \
+  -- python -c "import torch; print('CUDA available:', torch.cuda.is_available())"
+```
 
 ## 💡 Best Practices
 
