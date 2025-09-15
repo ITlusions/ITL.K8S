@@ -1,4 +1,4 @@
-# ITL.K8s - Kubernetes Infrastructure Documentation
+# ITL.K8s - Kubernetes 4. **🚨 Review [Emergency Access](docs/authentication/EMERGENCY_ACCESS.md)** - Understand break glass proceduresnfrastructure Documentation
 
 > 🚀 **Comprehensive Kubernetes infrastructure documentation and configuration management for ITlusions**
 
@@ -21,7 +21,8 @@ Welcome to the ITlusions Kubernetes (ITL.K8s) documentation repository. This rep
 1. **📖 Read the [Documentation Index](docs/index.md)** - Start here for a complete overview
 2. **🔐 Set up [GitHub Authentication](docs/authentication/GITHUB_AUTHENTICATION.md)** - Configure cluster access
 3. **💾 Understand [Storage Classes](docs/storageClasses/README.md)** - Choose the right storage for your workloads
-4. **🛠️ Follow our [Best Practices](#best-practices)** - Ensure production-ready deployments
+4. **� Review [Emergency Access](docs/EMERGENCY_ACCESS.md)** - Understand break glass procedures
+5. **�🛠️ Follow our [Best Practices](#best-practices)** - Ensure production-ready deployments
 
 ### Quick Access Links
 
@@ -30,6 +31,7 @@ Welcome to the ITlusions Kubernetes (ITL.K8s) documentation repository. This rep
 | 📚 [Full Documentation](docs/index.md) | Complete documentation index | ✅ Available |
 | 🔐 [Authentication Guide](docs/authentication/GITHUB_AUTHENTICATION.md) | GitHub OAuth setup for K8s access | ✅ Available |
 | 💾 [Storage Classes](docs/storageClasses/README.md) | Storage configuration and selection guide | ✅ Available |
+| 🚨 [Emergency Access](docs/authentication/EMERGENCY_ACCESS.md) | Break glass procedures for critical incidents | ✅ Available |
 | 🏗️ Architecture Diagrams | Infrastructure overview and patterns | 🚧 Coming Soon |
 | 📊 Monitoring Dashboards | Grafana dashboards and alerts | 🚧 Coming Soon |
 
@@ -41,7 +43,8 @@ ITL.K8s/
 ├── docs/
 │   ├── index.md                       # Complete documentation index
 │   ├── authentication/
-│   │   └── GITHUB_AUTHENTICATION.md  # GitHub OAuth for Kubernetes
+│   │   ├── GITHUB_AUTHENTICATION.md  # GitHub OAuth for Kubernetes
+│   │   └── EMERGENCY_ACCESS.md        # Break glass emergency procedures
 │   └── storageClasses/
 │       ├── README.md                  # Storage classes overview
 │       ├── ha-dbs-lh.yaml            # High availability database storage
@@ -113,6 +116,16 @@ We use **GitHub OAuth** for Kubernetes cluster authentication through Keycloak:
 - ✅ **Audit Trail**: Complete authentication logging
 
 **👉 [Setup GitHub Authentication](docs/authentication/GITHUB_AUTHENTICATION.md)**
+
+### Emergency Access 🚨
+
+When normal authentication fails, we provide **tiered emergency access**:
+
+1. **Emergency Keycloak Accounts**: Local admin accounts in Keycloak (fastest)
+2. **Node-stored Configuration**: Emergency kubeconfig on control plane nodes
+3. **Vault Backup**: Final fallback through HashiCorp Vault
+
+**👉 [Emergency Access Procedures](docs/authentication/EMERGENCY_ACCESS.md)**
 
 ### Quick Auth Setup
 
@@ -200,10 +213,10 @@ kubectl auth can-i get pods --namespace=default
 
 ## 📊 Repository Statistics
 
-![GitHub last commit](https://img.shields.io/github/last-commit/ITlusions/ITL.K8s)
-![GitHub issues](https://img.shields.io/github/issues/ITlusions/ITL.K8s)
-![GitHub pull requests](https://img.shields.io/github/issues-pr/ITlusions/ITL.K8s)
-![GitHub stars](https://img.shields.io/github/stars/ITlusions/ITL.K8s)
+![GitHub last commit](https://img.shields.io/github/last-commit/ITlusions/ITL.K8S)
+![GitHub issues](https://img.shields.io/github/issues/ITlusions/ITL.K8S)
+![GitHub pull requests](https://img.shields.io/github/issues-pr/ITlusions/ITL.K8S)
+![GitHub stars](https://img.shields.io/github/stars/ITlusions/ITL.K8S)
 
 ---
 

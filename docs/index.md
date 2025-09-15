@@ -3,6 +3,7 @@
 Welcome to the ITlusions Kubernetes configuration documentation. This repository co| Issue | Quick Fix | Documentation |
 |-------|-----------|---------------|
 | Authentication failures | Check GitHub OAuth configuration | [GitHub Authentication](authentication/GITHUB_AUTHENTICATION.md#troubleshooting) |
+| Emergency access needed | Use tiered emergency procedures | [Emergency Access](authentication/EMERGENCY_ACCESS.md) |
 | Authorization denied | Verify RBAC role bindings | [RBAC Best Practices](RBAC_BEST_PRACTICES.md#troubleshooting) |
 | Storage issues | Check storage class and PVC status | [Storage Classes Guide](storageClasses/README.md#troubleshooting) |
 | Pod deployment issues | Check security contexts and policies | [Pod Security Standards](POD_SECURITY.md) |
@@ -14,8 +15,9 @@ New to our Kubernetes setup? Start here:
 
 1. **[GitHub Authentication](authentication/GITHUB_AUTHENTICATION.md)** - Set up GitHub OAuth for Kubernetes cluster access
 2. **[Storage Classes](storageClasses/README.md)** - Choose the right storage for your workloads
-3. **[RBAC Configuration](#rbac-configuration)** - Configure role-based access control
-4. **[Cluster Management](#cluster-management)** - Day-to-day cluster operations
+3. **[Emergency Access](authentication/EMERGENCY_ACCESS.md)** - Break glass procedures for critical incidents
+4. **[RBAC Configuration](#rbac-configuration)** - Configure role-based access control
+5. **[Cluster Management](#cluster-management)** - Day-to-day cluster operations
 
 ## 📚 Documentation Index
 
@@ -24,6 +26,7 @@ New to our Kubernetes setup? Start here:
 | Document | Description | When to Use |
 |----------|-------------|-------------|
 | **[GitHub Authentication](authentication/GITHUB_AUTHENTICATION.md)** | Complete guide for GitHub OAuth integration with Kubernetes | When setting up GitHub-based authentication for cluster access |
+| **[Emergency Access](authentication/EMERGENCY_ACCESS.md)** | Break glass procedures for critical incidents | When normal authentication fails or during security emergencies |
 | **[RBAC Best Practices](RBAC_BEST_PRACTICES.md)** | Role-based access control configuration and management | For implementing proper authorization policies |
 | **[Service Account Management](SERVICE_ACCOUNTS.md)** | Managing service accounts for applications and CI/CD | When configuring automated access to cluster resources |
 
@@ -42,6 +45,7 @@ New to our Kubernetes setup? Start here:
 | Document | Description | When to Use |
 |----------|-------------|-------------|
 | **[Cluster Setup](CLUSTER_SETUP.md)** | Initial cluster configuration and hardening | When provisioning new clusters |
+| **[Kubernetes Backup Strategy](KUBERNETES_BACKUP_STRATEGY.md)** | Complete backup and recovery procedures for upgrades | Before cluster upgrades or for disaster recovery |
 | **[Network Policies](NETWORK_POLICIES.md)** | Network segmentation and security policies | For implementing network-level security |
 | **[Persistent Volume Management](PERSISTENT_VOLUMES.md)** | Advanced storage management and troubleshooting | When managing complex storage requirements |
 
@@ -65,9 +69,22 @@ New to our Kubernetes setup? Start here:
 
 | Document | Description | When to Use |
 |----------|-------------|-------------|
+| **[Istio Security Overview](security/ISTIO_SECURITY_OVERVIEW.md)** | Comprehensive Istio service mesh security guide | For implementing service mesh security |
+| **[Istio Authentication](security/ISTIO_AUTHENTICATION.md)** | mTLS and JWT authentication configuration | Setting up secure service-to-service communication |
+| **[Istio Authorization](security/ISTIO_AUTHORIZATION.md)** | Fine-grained access control policies | Implementing zero-trust network security |
+| **[Istio Gateway Security](security/ISTIO_GATEWAY_SECURITY.md)** | Secure ingress and egress configuration | Securing external traffic entry points |
+| **[Istio Security Best Practices](security/ISTIO_SECURITY_BEST_PRACTICES.md)** | Production security hardening guide | For comprehensive security implementation |
 | **[Security Hardening](SECURITY_HARDENING.md)** | Cluster security best practices and configurations | For implementing security standards |
 | **[Pod Security Standards](POD_SECURITY.md)** | Pod Security Standards implementation | When enforcing pod-level security policies |
 | **[Audit Logging](AUDIT_LOGGING.md)** | Kubernetes audit logging configuration | For compliance and security monitoring |
+
+### GPU & High-Performance Computing
+
+| Document | Description | When to Use |
+|----------|-------------|-------------|
+| **[AMD GPU Support](gpu/README.md)** | Complete guide to AMD GPU support in Kubernetes | For ML/AI workloads requiring GPU acceleration |
+| **[AMD GPU Installation](gpu/AMD_GPU_INSTALLATION.md)** | Step-by-step ROCm and device plugin installation | Setting up AMD GPU support from scratch |
+| **[AMD GPU Troubleshooting](gpu/AMD_GPU_TROUBLESHOOTING.md)** | Common issues and debugging procedures | When GPU workloads fail or behave unexpectedly |
 
 ## 🔧 Configuration Management
 
@@ -139,7 +156,7 @@ graph TD
 
 ### Emergency Procedures
 
-- **[Break Glass Access](EMERGENCY_ACCESS.md)** - Emergency cluster access procedures
+- **[Break Glass Access](authentication/EMERGENCY_ACCESS.md)** - Emergency cluster access procedures
 - **[Incident Response](INCIDENT_RESPONSE.md)** - Handling security incidents
 - **[Disaster Recovery](DISASTER_RECOVERY.md)** - Backup and recovery procedures
 
