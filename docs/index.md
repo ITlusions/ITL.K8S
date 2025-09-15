@@ -44,6 +44,7 @@ New to our Kubernetes setup? Start here:
 
 | Document | Description | When to Use |
 |----------|-------------|-------------|
+| **[Cluster Capabilities](CLUSTER_CAPABILITIES.md)** | Complete hardware and performance matrix for all cluster nodes | When planning workload placement and resource allocation |
 | **[Cluster Setup](CLUSTER_SETUP.md)** | Initial cluster configuration and hardening | When provisioning new clusters |
 | **[Kubernetes Backup Strategy](KUBERNETES_BACKUP_STRATEGY.md)** | Complete backup and recovery procedures for upgrades | Before cluster upgrades or for disaster recovery |
 | **[Network Policies](NETWORK_POLICIES.md)** | Network segmentation and security policies | For implementing network-level security |

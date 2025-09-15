@@ -27,6 +27,22 @@ New to AMD GPU on Kubernetes? Follow this sequence:
 
 **Pod stuck in "ContainerCreating" status?** ROCm container images are very large (3-8GB). First deployment can take 5-15 minutes depending on your network speed.
 
+**AMD Radeon RX Vega 7 (gfx90c) Users**: Modern ROCm 6.x containers don't support Vega 7 architecture. Use ROCm 5.x containers or CPU-only workloads. See [Architecture Compatibility](AMD_GPU_TROUBLESHOOTING.md#issue-6-amd-gpu-architecture-compatibility-gfx90c).
+
+## ✅ Validation Status
+
+Current cluster validation results (as of September 2025):
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| **Hardware Detection** | ✅ Working | AMD Radeon RX Vega 7 detected as gfx90c |
+| **ROCm Runtime** | ✅ Working | ROCm 6.3+ loads successfully |
+| **Device Plugin** | ✅ Working | `amd.com/gpu` resources available |
+| **Container Access** | ✅ Working | `/dev/dri` and `/dev/kfd` mounted correctly |
+| **ONNX Runtime Providers** | ✅ Working | ROCMExecutionProvider & MIGraphXExecutionProvider available |
+| **Compute Libraries** | ❌ Limited | gfx90c not supported in ROCm 6.4.2+ TensileLibrary |
+| **Workload Compatibility** | ⚠️ Partial | Use ROCm 5.x images or CPU fallback |
+
 ## 🔧 Configuration Summary
 
 ### Supported Hardware
