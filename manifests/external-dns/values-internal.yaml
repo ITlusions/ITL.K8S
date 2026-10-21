@@ -1,0 +1,43 @@
+# external-dns for the internal zone int.itlusions.nl (k8s.int.itlusions.nl).
+# Public records are NOT managed here. Install with:
+#   helm upgrade --install external-dns external-dns/external-dns -n external-dns --create-namespace -f values-internal.yaml
+# Check the keys against the chart version you install (helm show values external-dns/external-dns).
+
+provider:
+  name: rfc2136
+
+# Read Services, Ingresses, and Gateway API routes (Traefik internal Gateway)
+sources:
+  - service
+  - ingress
+  - gateway-httproute
+
+# Only touch names under the internal Kubernetes zone
+domainFilters:
+  - k8s.int.itlusions.nl
+
+# One owner ID per cluster, so records from other clusters are left alone
+txtOwnerId: itl-talos
+
+# sync: create, update and delete records. Use upsert-only while testing.
+policy: sync
+registry: txt
+txtPrefix: external-dns-
+
+extraArgs:
+  - --rfc2136-host=192.168.1.241
+  - --rfc2136-port=5354
+  - --rfc2136-zone=int.itlusions.nl
+  - --rfc2136-tsig-keyname=externaldns
+  - --rfc2136-tsig-secret-alg=hmac-sha256
+  - --rfc2136-tsig-axfr
+  - --rfc2136-min-ttl=60s
+
+# TSIG secret is read from a Secret, never from this file.
+# Create it once: kubectl -n external-dns create secret generic rfc2136-tsig --from-literal=secret=<key>
+env:
+  - name: EXTERNAL_DNS_RFC2136_TSIG_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: rfc2136-tsig
+        key: secret

@@ -1,231 +1,108 @@
-# ITL.K8s - Kubernetes 
+# ITL.K8s
 
-Welcome to the ITlusions Kubernetes (ITL.K8s) documentation repository. This repository serves as the central hub for all Kubernetes-related documentation, best practices, configurations, and operational guides.
+Documentation for the ITlusions Kubernetes cluster: how it's built, how it's deployed, and how to operate it.
 
-## 📋 Table of Contents
+## Main stack
 
-- [Quick Start](#-quick-start)
-- [Documentation Structure](#-documentation-structure)
-- [Storage Classes](#-storage-classes)
-- [Authentication](#-authentication)
-- [Getting Started](#-getting-started)
-- [Contributing](#-contributing)
-- [Support](#-support)
+| Layer | Component | Notes |
+|---|---|---|
+| OS | **Talos** | Immutable Kubernetes OS, managed with `talosctl` |
+| CNI | **Cilium** | eBPF networking, the target CNI |
+| Load balancing | **MetalLB with BGP** | LoadBalancer IPs from VLAN 99 (`10.99.99.20–100`), announced to the gateway |
+| Ingress | **Traefik** | Public instance on `10.99.99.27`, internal instance (Gateway API) on `10.99.99.26` |
+| Certificates | **cert-manager** | Let's Encrypt for public names, DNS-01 for internal names |
+| DNS records | **external-dns** | Writes `k8s.int.itlusions.nl` records into the internal zone from Services, Ingresses, and Gateway routes |
+| Identity | **Keycloak** | `sts.itlusions.com`, realm `itlusions` |
+| Website | **ITL website** | Public, behind the public Traefik instance |
 
-## 🚀 Quick Start
+Not yet decided: Longhorn (storage), Argo CD (GitOps), and Prefect. See [the deployment doc](docs/1-cluster/1.2-deployment.md#step-5-phase-2-not-automated-yet).
 
-### New to ITL Kubernetes?
+## Cluster layout
 
-1. **📖 Read the [Documentation Index](docs/index.md)** - Start here for a complete overview
-2. **🔐 Set up [GitHub Authentication](docs/authentication/GITHUB_AUTHENTICATION.md)** - Configure cluster access
-3. **💾 Understand [Storage Classes](docs/storageClasses/README.md)** - Choose the right storage for your workloads
-4. **� Review [Emergency Access](docs/EMERGENCY_ACCESS.md)** - Understand break glass procedures
-5. **�🛠️ Follow our [Best Practices](#best-practices)** - Ensure production-ready deployments
+Five servers, two of them control-plane nodes.
 
-### Quick Access Links
+| Node | Address | Role |
+|---|---|---|
+| talos-cp01 | 10.99.100.11 | control plane |
+| talos-cp02 | 10.99.100.12 | control plane |
+| talos-w01 | 10.99.100.21 | worker |
+| talos-w02 | 10.99.100.22 | worker |
+| talos-w03 | 10.99.100.23 | worker |
+| control-plane VIP | 10.99.100.10 | Kubernetes API |
 
-| Resource | Description | Status |
-|----------|-------------|--------|
-| 📚 [Full Documentation](docs/index.md) | Complete documentation index | ✅ Available |
-| 🔐 [Authentication Guide](docs/authentication/GITHUB_AUTHENTICATION.md) | GitHub OAuth setup for K8s access | ✅ Available |
-| 💾 [Storage Classes](docs/storageClasses/README.md) | Storage configuration and selection guide | ✅ Available |
-| 🚨 [Emergency Access](docs/authentication/EMERGENCY_ACCESS.md) | Break glass procedures for critical incidents | ✅ Available |
-| 🏗️ Architecture Diagrams | Infrastructure overview and patterns | 🚧 Coming Soon |
-| 📊 Monitoring Dashboards | Grafana dashboards and alerts | 🚧 Coming Soon |
+The full diagram is in [docs/1-cluster/1.1-architecture.md](docs/1-cluster/1.1-architecture.md).
 
-## 📁 Documentation Structure
+## Deploying from scratch
+
+1. Read the checklist and the steps in [docs/1-cluster/1.2-deployment.md](docs/1-cluster/1.2-deployment.md).
+2. Boot the five nodes into Talos (manual step).
+3. Copy `scripts/cluster/deploy.env.example` to `scripts/cluster/deploy.env` and fill it in.
+4. Run `scripts/cluster/deploy-talos.sh`. It installs Talos, Cilium, and MetalLB with BGP.
+5. Take an etcd snapshot right after bootstrap.
+
+Generated secrets, the kubeconfig, and `deploy.env` are git-ignored. Keep them out of the repo.
+
+## Repository layout
 
 ```
 ITL.K8s/
-├── README.md                          # This file - main entry point
+├── README.md
 ├── docs/
-│   ├── index.md                       # Complete documentation index
-│   ├── authentication/
-│   │   ├── GITHUB_AUTHENTICATION.md  # GitHub OAuth for Kubernetes
-│   │   └── EMERGENCY_ACCESS.md        # Break glass emergency procedures
-│   └── storageClasses/
-│       ├── README.md                  # Storage classes overview
-│       ├── ha-dbs-lh.yaml            # High availability database storage
-│       ├── longhorn.yaml             # Default distributed storage
-│       ├── longhorn-static.yaml      # Simplified Longhorn storage
-│       ├── minio-data.yaml           # MinIO object storage
-│       ├── nfs-csi.yaml              # Network file system storage
-│       ├── openebs-hostpath.yaml     # Local high-performance storage
-│       └── local-storage.yaml        # Manual provisioned storage
-└── [Additional directories as needed]
+│   ├── index.md                              # full documentation index
+│   ├── 1-cluster/
+│   │   ├── 1.1-architecture.md               # architecture diagram and node roles
+│   │   ├── 1.2-deployment.md                 # build the cluster from scratch
+│   │   ├── 1.4-ingress.md                    # public and internal Traefik
+│   │   ├── 1.5-loadbalancing-bgp.md          # MetalLB pools and BGP
+│   │   ├── 1.6-dns.md                        # k8s.itlusions.nl DNS hierarchy
+│   ├── 2-network/
+│   │   └── 2.2-vpn-mtu-optimization.md
+│   ├── 3-authentication/
+│   │   ├── 3.1-github-authentication.md      # GitHub login through Keycloak
+│   │   └── 3.2-emergency-access.md           # break-glass procedures
+│   ├── 4-storage/
+│   │   └── 4.1-storage-classes.md
+│   ├── 5-gpu/
+│   │   └── 5.1-…5.4                          # AMD GPU overview, install, troubleshooting
+│   ├── 6-operations/
+│   │   └── 6.1-backup-strategy.md
+│   └── 0-historical/                          # records of the pre-rebuild Ubuntu cluster
+│       ├── 0.1-cluster-capabilities-ubuntu.md
+│       └── 0.2-metallb-analysis-ubuntu.md
+├── manifests/
+│   ├── metallb/                              # IP pool, BGP peer, advertisement
+│   └── storageclasses/                       # storage class manifests
+└── scripts/
+    ├── cluster/                              # unattended Talos deployment
+    └── pxe/                                  # iPXE boot menu and config helpers
 ```
 
-## 💾 Storage Classes
+## Authentication
 
-Our Kubernetes cluster provides multiple storage classes optimized for different workloads:
+Cluster access uses **GitHub OAuth through Keycloak** (`sts.itlusions.com`):
 
-### 🏆 **Recommended Storage Classes**
+- Single sign-on with GitHub credentials.
+- GitHub teams map to Kubernetes RBAC.
+- All access goes through Keycloak, with audit logging.
 
-| Storage Class | Use Case | Performance | Availability | Documentation |
-|---------------|----------|-------------|--------------|---------------|
-| **`ha-dbs-lh`** | 🗄️ Production databases | High | Very High | [Details](docs/storageClasses/ha-dbs-lh.yaml) |
-| **`longhorn`** | 📱 General applications | High | High | [Details](docs/storageClasses/longhorn.yaml) |
-| **`openebs-hostpath`** | ⚡ High-performance apps | Very High | Medium | [Details](docs/storageClasses/openebs-hostpath.yaml) |
-| **`nfs-csi`** | 🤝 Shared volumes | Medium | High | [Details](docs/storageClasses/nfs-csi.yaml) |
+Setup: [GitHub authentication](docs/3-authentication/3.1-github-authentication.md).
 
-**👉 [Complete Storage Classes Guide](docs/storageClasses/README.md)**
+Break-glass access: [emergency access](docs/3-authentication/3.2-emergency-access.md).
 
-### Quick Storage Selection
+## Storage
 
-```bash
-# For databases (PostgreSQL, MySQL, MongoDB)
-kubectl apply -f - <<EOF
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: database-storage
-spec:
-  accessModes: [ReadWriteOnce]
-  storageClassName: ha-dbs-lh
-  resources:
-    requests:
-      storage: 10Gi
-EOF
+Storage classes and their use cases are in [docs/4-storage/4.1-storage-classes.md](docs/4-storage/4.1-storage-classes.md). For databases, use `ha-dbs-lh` (replicated, retained). Longhorn is not in the main stack yet, so confirm before depending on it.
 
-# For applications
-kubectl apply -f - <<EOF
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: app-storage
-spec:
-  accessModes: [ReadWriteOnce]
-  storageClassName: longhorn
-  resources:
-    requests:
-      storage: 5Gi
-EOF
-```
+## Backups
 
-## 🔐 Authentication
+The backup that matters is the **etcd snapshot**. Take one after bootstrap and regularly after that, and store it off the cluster. Procedures and what else to back up: [KUBERNETES_BACKUP_STRATEGY.md](docs/6-operations/6.1-backup-strategy.md).
 
-### GitHub OAuth Integration
+## Contacts
 
-We use **GitHub OAuth** for Kubernetes cluster authentication through Keycloak:
-
-- ✅ **Single Sign-On**: Use your GitHub credentials
-- ✅ **Team-based Access**: GitHub teams → Kubernetes RBAC
-- ✅ **Centralized Management**: All access through Keycloak
-- ✅ **Audit Trail**: Complete authentication logging
-
-**👉 [Setup GitHub Authentication](docs/authentication/GITHUB_AUTHENTICATION.md)**
-
-### Emergency Access 🚨
-
-When normal authentication fails, we provide **tiered emergency access**:
-
-1. **Emergency Keycloak Accounts**: Local admin accounts in Keycloak (fastest)
-2. **Node-stored Configuration**: Emergency kubeconfig on control plane nodes
-3. **Vault Backup**: Final fallback through HashiCorp Vault
-
-**👉 [Emergency Access Procedures](docs/authentication/EMERGENCY_ACCESS.md)**
-
-### Quick Auth Setup
-
-```bash
-# Check your current authentication
-kubectl auth whoami
-
-# Login with GitHub (via Keycloak)
-kubectl oidc-login
-
-# Verify your permissions
-kubectl auth can-i get pods --namespace=default
-```
-
-## 🛠️ Getting Started
-
-### For Developers
-
-1. **Setup Access**: Follow the [GitHub Authentication Guide](docs/authentication/GITHUB_AUTHENTICATION.md)
-2. **Choose Storage**: Use the [Storage Classes Guide](docs/storageClasses/README.md)
-3. **Deploy Applications**: Follow our deployment best practices
-4. **Monitor**: Use our monitoring dashboards
-
-### For Platform Engineers
-
-1. **Read Full Documentation**: Start with [docs/index.md](docs/index.md)
-2. **Understand Architecture**: Review infrastructure patterns
-3. **Configure Security**: Implement RBAC and network policies
-4. **Setup Monitoring**: Deploy observability stack
-
-### For DevOps Teams
-
-1. **CI/CD Integration**: Setup GitHub Actions with OIDC
-2. **GitOps Workflows**: Configure ArgoCD deployments
-3. **Security Policies**: Implement Pod Security Standards
-4. **Disaster Recovery**: Setup backup and recovery procedures
-
-## 🏗️ Best Practices
-
-### 🔒 Security
-- Use `ha-dbs-lh` storage class for production databases
-- Implement network policies for pod-to-pod communication
-- Regular security audits and compliance checks
-- Principle of least privilege for RBAC
-
-### 📈 Performance
-- Choose appropriate storage classes for workload requirements
-- Monitor resource usage and set appropriate limits
-- Use horizontal pod autoscaling where applicable
-- Optimize container images for faster startup
-
-### 💰 Cost Optimization
-- Right-size storage volumes and compute resources
-- Use spot instances where appropriate
-- Regular cleanup of unused resources
-- Monitor and optimize cluster utilization
-
-### 🔧 Operations
-- Follow GitOps practices for all deployments
-- Implement comprehensive monitoring and alerting
-- Document all customizations and configurations
-- Regular backup and disaster recovery testing
-
-### 🆘 Getting Help
-
-| Issue Type | Contact Method | Response Time |
-|------------|----------------|---------------|
-| **Emergency** | Matrix: `#platform-emergency` | Immediate |
-| **General Questions** | Matrix: `#kubernetes-help` | Same day |
-| **Documentation** | GitHub Issues | 1-2 days |
-| **Feature Requests** | GitHub Issues | Weekly review |
-
-### 👥 Team Contacts
-
-- **Platform Team**: Overall cluster management and infrastructure
-- **Security Team**: Security policies and compliance  
-- **DevOps Team**: CI/CD and deployment automation
-
-### 🔗 Useful Links
-
-- **Cluster Dashboard**: [https://dashboard.dev.itlusions.com](https://dashboard.dev.itlusions.com)
-- **Grafana Monitoring**: [https://grafana.dev.itlusions.com](https://grafana.dev.itlusions.com)
-- **ArgoCD GitOps**: [https://argocd.dev.itlusions.com](https://argocd.dev.itlusions.com)
-- **Keycloak Auth**: [https://sts.itlusions.com](https://sts.itlusions.com)
-
-## 📊 Repository Statistics
-
-![GitHub last commit](https://img.shields.io/github/last-commit/ITlusions/ITL.K8S)
-![GitHub issues](https://img.shields.io/github/issues/ITlusions/ITL.K8S)
-![GitHub pull requests](https://img.shields.io/github/issues-pr/ITlusions/ITL.K8S)
-![GitHub stars](https://img.shields.io/github/stars/ITlusions/ITL.K8S)
+- **Platform team:** cluster management and infrastructure.
+- **Security team:** policies and compliance.
+- **Emergencies:** Matrix `#platform-emergency`. Other questions: `#kubernetes-help`.
 
 ---
 
-## 📜 License
-
-This documentation is maintained by the **ITlusions Platform Team**.
-
-**Last Updated**: September 14, 2025 | **Version**: 1.0 | **Status**: 🟢 Active
-
----
-
-> 💡 **Tip**: Bookmark this README and the [Documentation Index](docs/index.md) for quick access to all Kubernetes resources!
-
-*Happy Kubernetes-ing! 🚢*
+**Last updated:** October 21, 2026

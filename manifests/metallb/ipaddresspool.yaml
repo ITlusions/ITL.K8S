@@ -1,0 +1,10 @@
+# VLAN 99 pool for LoadBalancer IPs (rendered by scripts/cluster/deploy-talos.sh)
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: vlan99
+  namespace: metallb-system
+spec:
+  addresses:
+    - ${LB_POOL}
+  autoAssign: true

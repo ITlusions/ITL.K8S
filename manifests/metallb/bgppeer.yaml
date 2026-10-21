@@ -1,0 +1,10 @@
+# BGP session from every Talos node to the VLAN 99 gateway
+apiVersion: metallb.io/v1beta2
+kind: BGPPeer
+metadata:
+  name: vlan99-gateway
+  namespace: metallb-system
+spec:
+  myASN: ${BGP_NODE_ASN}
+  peerASN: ${BGP_ROUTER_ASN}
+  peerAddress: ${BGP_ROUTER_ADDRESS}

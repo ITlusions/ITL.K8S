@@ -1,0 +1,55 @@
+#!ipxe
+# Example iPXE menu for the ITL Talos nodes.
+# Each node entry boots the Talos factory image and tells it where its machine
+# config is, via talos.config=. Nodes configure themselves on first boot.
+
+set server http://10.99.2.50:8080     ; config server on the management network (example, set to your webserver)
+set schematic 8479232c408ba2e411fefcf18c0e83ac657875c4d4d2b09b55a31a38b9c013a1
+set talos_ver v1.14.4
+set image https://pxe.factory.talos.dev/image/${schematic}/${talos_ver}
+set args talos.platform=metal console=tty0 slab_nomerge pti=on consoleblank=0 printk.devkmsg=on selinux=1 module.sig_enforce=1 proc_mem.force_override=never
+
+:menu
+menu ITL Talos install
+item cp01  Control plane  talos-cp01  10.99.100.11
+item cp02  Control plane  talos-cp02  10.99.100.12
+item w01   Worker         talos-w01   10.99.100.21
+item w02   Worker         talos-w02   10.99.100.22
+item w03   Worker         talos-w03   10.99.100.23
+item disk  Boot from disk
+item shell iPXE shell
+choose --default disk --timeout 30000 target && goto ${target}
+
+:cp01
+set node talos-cp01
+goto install
+
+:cp02
+set node talos-cp02
+goto install
+
+:w01
+set node talos-w01
+goto install
+
+:w02
+set node talos-w02
+goto install
+
+:w03
+set node talos-w03
+goto install
+
+:install
+echo Installing ${node} from ${server}/${node}.yaml
+dhcp
+kernel ${image}/kernel-amd64 ${args} talos.config=${server}/${node}.yaml
+initrd ${image}/initramfs-amd64.xz
+boot
+
+:disk
+echo Booting from disk
+exit
+
+:shell
+shell

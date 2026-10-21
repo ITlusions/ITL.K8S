@@ -1,0 +1,10 @@
+# Announce each LoadBalancer IP from the vlan99 pool as a /32 route
+apiVersion: metallb.io/v1beta1
+kind: BGPAdvertisement
+metadata:
+  name: vlan99
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+    - vlan99
+  aggregationLength: 32
