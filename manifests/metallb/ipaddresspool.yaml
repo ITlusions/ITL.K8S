@@ -1,4 +1,4 @@
-# VLAN 99 pool for LoadBalancer IPs (rendered by scripts/cluster/deploy-talos.sh)
+# VLAN 99 pool for LoadBalancer IPs (rendered by scripts/cluster/deploy_talos.py)
 apiVersion: metallb.io/v1beta1
 kind: IPAddressPool
 metadata:

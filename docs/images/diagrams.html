@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ITL.K8s diagrams</title>
+<style>
+  :root { --bg:#f7f8fa; --fg:#1d2330; --card:#ffffff; --line:#dfe3ea; --accent:#2f6fed; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#11141b; --fg:#e6e9ef; --card:#1a1f2a; --line:#2c3443; --accent:#7aa2ff; } }
+  :root[data-theme="dark"] { --bg:#11141b; --fg:#e6e9ef; --card:#1a1f2a; --line:#2c3443; --accent:#7aa2ff; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui,Segoe UI,Roboto,sans-serif; }
+  header { padding:20px 24px; border-bottom:1px solid var(--line); }
+  header h1 { margin:0; font-size:20px; }
+  header p { margin:4px 0 0; opacity:.75; font-size:13px; }
+  main { padding:16px 24px 48px; max-width:1200px; margin:0 auto; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin:16px 0; }
+  section h2 { margin:0 0 8px; font-size:17px; }
+  .sub { font-weight:400; opacity:.6; font-size:13px; }
+  .bar { margin-bottom:8px; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:6px; padding:6px 12px; cursor:pointer; font-size:13px; }
+  .diagram { overflow:auto; }
+  .diagram svg { max-width:100%; height:auto; }
+  pre.mermaid { margin:0; background:transparent; }
+</style>
+</head>
+<body>
+<header>
+  <h1>ITL.K8s cluster diagrams</h1>
+  <p>Rendered in your browser with Mermaid 11.4.0 (loaded from jsDelivr). Use &quot;Save as SVG&quot; to export a diagram.</p>
+</header>
+<main>
+
+<section>
+  <h2>1.1 Architecture <span class="sub">diagram 1</span></h2>
+  <div class="bar"><button onclick="saveSvg('d1','1.1-architecture-1.svg')">Save as SVG</button></div>
+  <div class="diagram" id="d1"><pre class="mermaid">flowchart TB
+    INET([&quot;Internet&quot;])
+    NAT[&quot;Public IP 188.213.90.236&lt;br/&gt;(NAT to VLAN 99)&quot;]
+    LAN([&quot;LAN / VPN&lt;br/&gt;10.99.2.0/24, 192.168.1.0/24&quot;])
+
+    subgraph NET[&quot;Network&quot;]
+        GW[&quot;Gateway ubntgw01&lt;br/&gt;10.99.99.1 (VLAN 99)&lt;br/&gt;BGP peer&quot;]
+        DNS[&quot;Internal DNS&lt;br/&gt;10.99.2.10 / 192.168.1.241&lt;br/&gt;zone int.itlusions.nl&quot;]
+    end
+
+    subgraph POOL[&quot;MetalLB via BGP (VLAN 99 pool)&quot;]
+        LB1[&quot;10.99.99.20-100 pool&lt;br/&gt;Traefik public  .27&lt;br/&gt;Traefik internal .26 (planned)&lt;br/&gt;CoreDNS external .21&quot;]
+    end
+
+    subgraph CP[&quot;Control plane (2 nodes)&quot;]
+        VIP[&quot;API endpoint&lt;br/&gt;10.99.100.10 (VIP)&quot;]
+        CP1[&quot;talos-cp01&lt;br/&gt;10.99.100.11&lt;br/&gt;control plane + etcd&quot;]
+        CP2[&quot;talos-cp02&lt;br/&gt;10.99.100.12&lt;br/&gt;control plane + etcd&quot;]
+    end
+
+    subgraph WK[&quot;Workers (3 nodes)&quot;]
+        W1[&quot;talos-w02&lt;br/&gt;10.99.100.22&quot;]
+        W2[&quot;talos-w01&lt;br/&gt;10.99.100.21&quot;]
+        W3[&quot;talos-w03&lt;br/&gt;10.99.100.23&quot;]
+    end
+
+    subgraph ID[&quot;Identity&quot;]
+        KC[&quot;Keycloak&lt;br/&gt;sts.itlusions.com&lt;br/&gt;realm itlusions&quot;]
+    end
+
+    subgraph APPS[&quot;Platform and workloads&quot;]
+        P1[&quot;Traefik public&lt;br/&gt;ITL website, Keycloak,&lt;br/&gt;Longhorn UI, dashboard&quot;]
+        P2[&quot;Traefik internal&lt;br/&gt;Prefect, internal tools&quot;]
+        P3[&quot;Prefect server + Postgres&lt;br/&gt;(Longhorn ha-dbs-lh)&quot;]
+        P4[&quot;Prefect worker&lt;br/&gt;itl-amalia pool&quot;]
+        P5[&quot;Longhorn storage&lt;br/&gt;3 replicas&quot;]
+        P6[&quot;cert-manager,&lt;br/&gt;external-dns&quot;]
+    end
+
+    INET --&gt; NAT --&gt; LB1
+    LAN --&gt; LB1
+    LAN --&gt; DNS
+    GW &lt;-- &quot;BGP /32 routes&quot; --&gt; CP1
+    GW &lt;-- &quot;BGP /32 routes&quot; --&gt; W1
+    GW &lt;-- &quot;BGP /32 routes&quot; --&gt; W2
+    LB1 --&gt; P1
+    P1 --&gt; KC
+    P2 -. &quot;OIDC (planned)&quot; .-&gt; KC
+    LB1 --&gt; P2
+    P2 --&gt; P3
+    P4 --&gt; P3
+    CP1 --- VIP
+    CP2 --- VIP
+    CP1 &lt;-- &quot;etcd&quot; --&gt; CP2
+    VIP --&gt; W1
+    W1 --- P5
+    CILIUM[&quot;Cilium CNI (eBPF) on all Talos nodes&quot;] --- W1
+    W2 --- P5
+    W3 --- P5
+    P6 --&gt; CP1
+    W1 --- P3
+    W2 --- P4
+</pre></div>
+</section>
+<section>
+  <h2>1.4 Ingress <span class="sub">diagram 1</span></h2>
+  <div class="bar"><button onclick="saveSvg('d2','1.4-ingress-1.svg')">Save as SVG</button></div>
+  <div class="diagram" id="d2"><pre class="mermaid">flowchart LR
+    subgraph EXT[&quot;Internet&quot;]
+        U1([&quot;Browser&quot;])
+    end
+    subgraph LAN[&quot;LAN / VPN&quot;]
+        U2([&quot;Admin workstation&quot;])
+    end
+
+    NAT[&quot;Public IP 188.213.90.236&lt;br/&gt;NAT to 10.99.99.27&quot;]
+
+    subgraph PUB[&quot;Public Traefik (itl-traefik, 10.99.99.27)&quot;]
+        P_WEB[&quot;web :80 / websecure :443&lt;br/&gt;Ingress class: traefik&quot;]
+    end
+    subgraph INT[&quot;Internal Traefik (traefik-internal, 10.99.99.26)&quot;]
+        I_WEB[&quot;websecure :443&lt;br/&gt;Gateway API, label itlusions.nl/traefik-instance=internal&quot;]
+    end
+
+    subgraph SVC[&quot;Services&quot;]
+        WEB[&quot;ITL website&quot;]
+        KC[&quot;Keycloak&lt;br/&gt;sts.itlusions.com&quot;]
+        DASH[&quot;Kubernetes dashboard&quot;]
+        LH[&quot;Longhorn UI&quot;]
+        PREF[&quot;Prefect server&lt;br/&gt;(internal)&quot;]
+    end
+
+    U1 --&gt; NAT --&gt; P_WEB
+    P_WEB --&gt; WEB
+    P_WEB --&gt; KC
+    P_WEB --&gt; DASH
+    P_WEB --&gt; LH
+    U2 --&gt; I_WEB
+    I_WEB --&gt; PREF
+    U2 -. &quot;allowed from LAN ranges only&quot; .-&gt; I_WEB
+</pre></div>
+</section>
+<section>
+  <h2>1.5 Load balancing and BGP <span class="sub">diagram 1</span></h2>
+  <div class="bar"><button onclick="saveSvg('d3','1.5-loadbalancing-bgp-1.svg')">Save as SVG</button></div>
+  <div class="diagram" id="d3"><pre class="mermaid">flowchart TB
+    subgraph NODES[&quot;Talos nodes (node subnet 10.99.100.0/24)&quot;]
+        CP1[&quot;talos-cp01 10.99.100.11&lt;br/&gt;MetalLB speaker&quot;]
+        CP2[&quot;talos-cp02 10.99.100.12&lt;br/&gt;MetalLB speaker&quot;]
+        W1[&quot;talos-w01 10.99.100.21&lt;br/&gt;MetalLB speaker&quot;]
+        W2[&quot;talos-w02 10.99.100.22&lt;br/&gt;MetalLB speaker&quot;]
+        W3[&quot;talos-w03 10.99.100.23&lt;br/&gt;MetalLB speaker&quot;]
+    end
+
+    subgraph ROUTERS[&quot;EdgeRouters (AS 64512)&quot;]
+        EM[&quot;edge-main&lt;br/&gt;router-id 192.168.1.1&lt;br/&gt;10.99.99.1 (VLAN 99)&lt;br/&gt;10.99.100.1 (VLAN 100)&quot;]
+        E10[&quot;edge-10&lt;br/&gt;router-id 192.168.1.10&quot;]
+    end
+
+    subgraph POOL[&quot;MetalLB pools&quot;]
+        VL99[&quot;vlan99 pool&lt;br/&gt;10.99.99.20 to 10.99.99.100&lt;br/&gt;auto-assign&quot;]
+        DNSP[&quot;dns-pool&lt;br/&gt;10.99.99.10 to 10.99.99.15&lt;br/&gt;(separate pool, not used by the services above)&quot;]
+    end
+
+    SVC1[&quot;Traefik public&lt;br/&gt;10.99.99.27&quot;]
+    SVC2[&quot;Traefik internal&lt;br/&gt;10.99.99.26&quot;]
+    SVC3[&quot;CoreDNS external&lt;br/&gt;10.99.99.21 (from vlan99)&quot;]
+
+    VL99 --&gt; SVC1
+    VL99 --&gt; SVC2
+    VL99 --&gt; SVC3
+
+    CP1 -- &quot;BGP /32 per service&quot; --&gt; EM
+    W1 -- &quot;BGP /32 per service&quot; --&gt; EM
+    W2 -- &quot;BGP /32 per service&quot; --&gt; EM
+    W3 -- &quot;BGP /32 per service&quot; --&gt; EM
+    CP2 -- &quot;BGP /32 per service&quot; --&gt; EM
+    EM &lt;-- &quot;iBGP&quot; --&gt; E10
+</pre></div>
+</section>
+<section>
+  <h2>1.6 DNS hierarchy <span class="sub">diagram 1</span></h2>
+  <div class="bar"><button onclick="saveSvg('d4','1.6-dns-1.svg')">Save as SVG</button></div>
+  <div class="diagram" id="d4"><pre class="mermaid">flowchart TB
+    subgraph PUB[&quot;PUBLIC: resolves from the internet (TransIP)&quot;]
+        direction TB
+        APEX[&quot;itlusions.com / itlusions.nl&lt;br/&gt;A 188.213.90.236&quot;]
+        APEX --&gt; WWW[&quot;www, sts, ...&lt;br/&gt;public sites&quot;]
+        APEX --&gt; DEV[&quot;dev.itlusions.com / dev.itlusions.nl&lt;br/&gt;development apps&quot;]
+        APEX --&gt; ACME[&quot;_acme-challenge.int TXT&lt;br/&gt;(DNS-01 only)&quot;]
+    end
+
+    subgraph INT[&quot;INTERNAL: LAN and VPN only (internal DNS, no public records)&quot;]
+        direction TB
+        ROOT[&quot;int.itlusions.nl&lt;br/&gt;(mirror: int.itlusions.com)&quot;]
+        ROOT --&gt; K8S[&quot;k8s.int.itlusions.nl&quot;]
+        ROOT --&gt; INF[&quot;infra.int.itlusions.nl&lt;br/&gt;routers, DNS, Pi-hole&quot;]
+        ROOT --&gt; SUB[&quot;&amp;lt;subzone&amp;gt;.int.itlusions.nl&lt;br/&gt;added as needed&quot;]
+        K8S --&gt; API[&quot;api&lt;br/&gt;10.99.100.10 (VIP)&quot;]
+        K8S --&gt; TI[&quot;traefik-int&lt;br/&gt;10.99.99.26&quot;]
+        K8S --&gt; WILD[&quot;* (wildcard)&lt;br/&gt;10.99.99.26&quot;]
+        K8S --&gt; NODES[&quot;nodes.k8s&lt;br/&gt;talos-cp01 ... talos-w03&quot;]
+    end
+
+    INET([&quot;Internet client&quot;]) -- &quot;www, sts, dev&quot; --&gt; PUB
+    INET -. &quot;int names: NXDOMAIN&quot; .-&gt; INT
+    LAN([&quot;LAN / VPN client&quot;]) -- &quot;all names&quot; --&gt; PUB
+    LAN -- &quot;int names&quot; --&gt; INT
+</pre></div>
+</section>
+</main>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, securityLevel: 'strict', theme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default' });
+  window.saveSvg = (id, name) => {
+    const svg = document.querySelector('#' + id + ' svg');
+    if (!svg) { alert('Diagram not rendered yet.'); return; }
+    const blob = new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  };
+</script>
+</body>
+</html>

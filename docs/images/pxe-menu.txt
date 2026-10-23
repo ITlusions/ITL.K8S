@@ -1,0 +1,16 @@
+┌──────────────────────────────────────────────────────────────────┐
+│ ITL Talos install  ·  network boot                               │
+├──────────────────────────────────────────────────────────────────┤
+│> 1 Control plane talos-cp01  10.99.100.11                        │
+│  2 Control plane talos-cp02  10.99.100.12                        │
+│  3 Worker        talos-w01   10.99.100.21                        │
+│  4 Worker        talos-w02   10.99.100.22                        │
+│  5 Worker        talos-w03   10.99.100.23                        │
+├──────────────────────────────────────────────────────────────────┤
+│  6  Boot from disk                                               │
+│  7  iPXE shell                                                   │
+├──────────────────────────────────────────────────────────────────┤
+│  Enter a number, or wait 30 s for: Boot from disk                │
+└──────────────────────────────────────────────────────────────────┘
+
+  Mock-up of scripts/pxe/menu.ipxe (iPXE text menu renders in one colour on the console).

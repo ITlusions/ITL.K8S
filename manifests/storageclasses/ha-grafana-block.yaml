@@ -1,0 +1,29 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ha-grafana-block
+  labels:
+    app.kubernetes.io/name: longhorn
+    storage.type: block-storage
+    optimized.for: grafana
+provisioner: driver.longhorn.io
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
+parameters:
+  # Block Storage Configuration for Grafana
+  numberOfReplicas: "2"                    # High availability
+  staleReplicaTimeout: "30"
+  dataEngine: "v1"
+  fsType: ""                               # No filesystem - raw block device
+  frontend: "blockdev"                     # Use block device frontend instead of filesystem
+  
+  # Performance optimizations for Grafana
+  dataLocality: "best-effort"              # Keep data close to workload for dashboard performance
+  disableRevisionCounter: "true"           # Better performance for time-series data
+  backupTargetName: "default"
+  unmapMarkSnapChainRemoved: "enabled"
+  
+  # Anti-Affinity for reliability
+  replicaSoftAntiAffinity: "true"          # Spread replicas across nodes
+  replicaDiskSoftAntiAffinity: "true"      # Spread replicas across disks

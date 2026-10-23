@@ -1,0 +1,10 @@
+# metallb-system must be created with this label before the Helm chart installs.
+# The speaker DaemonSet needs hostNetwork, hostPort, and NET_ADMIN/NET_RAW/SYS_ADMIN
+# to run BGP/ARP, which the cluster's default "baseline" Pod Security Admission
+# level rejects. This is MetalLB's own documented requirement, not a workaround.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: metallb-system
+  labels:
+    pod-security.kubernetes.io/enforce: privileged

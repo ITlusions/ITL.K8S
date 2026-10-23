@@ -1,9 +1,13 @@
 #!ipxe
+
+# Background picture, embedded in the EFI image. Falls back to the text console without graphics.
+console --keep --picture talos-pxe-itlusions.png || echo text console only
 # Example iPXE menu for the ITL Talos nodes.
 # Each node entry boots the Talos factory image and tells it where its machine
 # config is, via talos.config=. Nodes configure themselves on first boot.
 
-set server http://10.99.2.50:8080     ; config server on the management network (example, set to your webserver)
+# Config server on the management network (example, set to your webserver).
+set server http://10.99.2.50:8080
 set schematic 8479232c408ba2e411fefcf18c0e83ac657875c4d4d2b09b55a31a38b9c013a1
 set talos_ver v1.14.4
 set image https://pxe.factory.talos.dev/image/${schematic}/${talos_ver}

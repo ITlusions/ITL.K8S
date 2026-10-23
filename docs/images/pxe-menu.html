@@ -1,0 +1,21 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>PXE boot menu mock-up</title>
+<style>body{margin:0;background:#0d1117;color:#c9d1d9}pre{font:15px/1.3 Consolas,"Cascadia Mono",monospace;padding:24px;margin:0;white-space:pre}
+.frame{color:#67e8f9}.title{color:#fff;font-weight:bold}.cp{color:#facc15}.wk{color:#4ade80}.key{color:#e879f9;font-weight:bold}
+.disk{color:#60a5fa}.shell{color:#f87171}.dim{color:#6b7280}.sel{background:#67e8f9;color:#0d1117}.hint{color:#fbbf24}</style>
+</head><body><pre><span class="frame">┌──────────────────────────────────────────────────────────────────┐</span>
+<span class="frame">│</span><span class="title"> ITL Talos install  ·  network boot</span>                               <span class="frame">│</span>
+<span class="frame">├──────────────────────────────────────────────────────────────────┤</span>
+<span class="frame">│</span><span class="sel">&gt; </span><span class="key">1</span> <span class="cp">Control plane </span>talos-cp01  <span class="dim">10.99.100.11</span>                        <span class="frame">│</span>
+<span class="frame">│</span>  <span class="key">2</span> <span class="cp">Control plane </span>talos-cp02  <span class="dim">10.99.100.12</span>                        <span class="frame">│</span>
+<span class="frame">│</span>  <span class="key">3</span> <span class="wk">Worker        </span>talos-w01   <span class="dim">10.99.100.21</span>                        <span class="frame">│</span>
+<span class="frame">│</span>  <span class="key">4</span> <span class="wk">Worker        </span>talos-w02   <span class="dim">10.99.100.22</span>                        <span class="frame">│</span>
+<span class="frame">│</span>  <span class="key">5</span> <span class="wk">Worker        </span>talos-w03   <span class="dim">10.99.100.23</span>                        <span class="frame">│</span>
+<span class="frame">├──────────────────────────────────────────────────────────────────┤</span>
+<span class="frame">│</span><span class="disk">  6  Boot from disk</span>                                               <span class="frame">│</span>
+<span class="frame">│</span><span class="shell">  7  iPXE shell</span>                                                   <span class="frame">│</span>
+<span class="frame">├──────────────────────────────────────────────────────────────────┤</span>
+<span class="frame">│</span><span class="hint">  Enter a number, or wait 30 s for: Boot from disk</span>                <span class="frame">│</span>
+<span class="frame">└──────────────────────────────────────────────────────────────────┘</span>
+
+<span class="dim">  Mock-up of scripts/pxe/menu.ipxe (iPXE text menu renders in one colour on the console).</span>
+</pre></body></html>

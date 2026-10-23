@@ -1,0 +1,27 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>ITL cluster topology</title>
+<style>
+body{margin:0;background:#0d1117;color:#c9d1d9}
+pre{font:14px/1.35 Consolas,"Cascadia Mono",monospace;padding:24px;margin:0;white-space:pre}
+.net{color:#67e8f9} .pub{color:#f87171} .int{color:#60a5fa} .cp{color:#facc15} .wk{color:#4ade80}
+.dim{color:#6b7280} .vip{color:#e879f9} .bgp{color:#c084fc} .b{font-weight:bold}
+</style></head><body><pre><span class="dim">                          ITL Talos cluster  -  network topology</span>
+
+<span class="net">                      [ Internet ]</span>
+<span class="dim">                           |</span>
+<span class="pub">                  NAT 188.213.90.236 -&gt; 10.99.99.27</span>
+<span class="dim">                           |</span>
+<span class="net">  ===============================  VLAN 99  10.99.99.0/24  ===============================</span>
+    <span class="pub">[Traefik public .27]</span>   <span class="int">[Traefik internal .26]</span>   <span class="net">[CoreDNS .21]</span>   <span class="dim">(pool 20-100)</span>
+<span class="net">  ===============================  VLAN 100 10.99.100.0/24  ===============================</span>
+                         <span class="bgp">BGP AS 64512  &lt;--&gt;  edge-main 10.99.100.1</span>
+<span class="dim">                           |                       |</span>
+    <span class="vip">[ API VIP .10 ]</span>
+<span class="dim">           +-----------------+-----------------+</span>
+    <span class="cp">(talos-cp01 .11)</span>    <span class="cp">(talos-cp02 .12)</span>
+<span class="dim">          control plane + etcd      control plane + etcd</span>
+
+    <span class="wk">[talos-w01 .21]</span>   <span class="wk">[talos-w02 .22]</span>   <span class="wk">[talos-w03 .23]</span>
+<span class="dim">       worker            worker            worker</span>
+
+<span class="dim">  legend:  </span><span class="pub">public</span><span class="dim"> </span><span class="int">internal</span><span class="dim"> </span><span class="cp">control plane</span><span class="dim"> </span><span class="wk">worker</span><span class="dim"> </span><span class="vip">VIP</span><span class="dim"> </span><span class="bgp">BGP</span>
+</pre></body></html>

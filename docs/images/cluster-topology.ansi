@@ -1,0 +1,20 @@
+[90m                          ITL Talos cluster  -  network topology[0m
+
+[96m                      [ Internet ][0m
+[90m                           |[0m
+[91m                  NAT 188.213.90.236 -> 10.99.99.27[0m
+[90m                           |[0m
+[96m  ===============================  VLAN 99  10.99.99.0/24  ===============================[0m
+    [91m[Traefik public .27][0m   [94m[Traefik internal .26][0m   [96m[CoreDNS .21][0m   [90m(pool 20-100)[0m
+[96m  ===============================  VLAN 100 10.99.100.0/24  ===============================[0m
+                         [35mBGP AS 64512  <-->  edge-main 10.99.100.1[0m
+[90m                           |                       |[0m
+    [95m[ API VIP .10 ][0m
+[90m           +-----------------+-----------------+[0m
+    [93m(talos-cp01 .11)[0m    [93m(talos-cp02 .12)[0m
+[90m          control plane + etcd      control plane + etcd[0m
+
+    [92m[talos-w01 .21][0m   [92m[talos-w02 .22][0m   [92m[talos-w03 .23][0m
+[90m       worker            worker            worker[0m
+
+[90m  legend:  [0m[91mpublic[0m[90m [0m[94minternal[0m[90m [0m[93mcontrol plane[0m[90m [0m[92mworker[0m[90m [0m[95mVIP[0m[90m [0m[35mBGP[0m[0m

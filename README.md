@@ -10,7 +10,7 @@ Documentation for the ITlusions Kubernetes cluster: how it's built, how it's dep
 | CNI | **Cilium** | eBPF networking, the target CNI |
 | Load balancing | **MetalLB with BGP** | LoadBalancer IPs from VLAN 99 (`10.99.99.20–100`), announced to the gateway |
 | Ingress | **Traefik** | Public instance on `10.99.99.27`, internal instance (Gateway API) on `10.99.99.26` |
-| Certificates | **cert-manager** | Let's Encrypt for public names, DNS-01 for internal names |
+| Certificates | **cert-manager** | Public names: Let's Encrypt **HTTP-01** through the public Traefik (`letsencrypt-issuer`). Internal `int` names: Let's Encrypt **DNS-01** through the TransIP webhook (LAN-only addresses can't pass HTTP-01) |
 | DNS records | **external-dns** | Writes `k8s.int.itlusions.nl` records into the internal zone from Services, Ingresses, and Gateway routes |
 | Identity | **Keycloak** | `sts.itlusions.com`, realm `itlusions` |
 | Website | **ITL website** | Public, behind the public Traefik instance |
@@ -23,7 +23,7 @@ Five servers, two of them control-plane nodes.
 
 | Node | Address | Role |
 |---|---|---|
-| talos-cp01 | 10.99.100.11 | control plane |
+| itl-cp01 | 10.99.100.11 | control plane |
 | talos-cp02 | 10.99.100.12 | control plane |
 | talos-w01 | 10.99.100.21 | worker |
 | talos-w02 | 10.99.100.22 | worker |
@@ -37,7 +37,7 @@ The full diagram is in [docs/1-cluster/1.1-architecture.md](docs/1-cluster/1.1-a
 1. Read the checklist and the steps in [docs/1-cluster/1.2-deployment.md](docs/1-cluster/1.2-deployment.md).
 2. Boot the five nodes into Talos (manual step).
 3. Copy `scripts/cluster/deploy.env.example` to `scripts/cluster/deploy.env` and fill it in.
-4. Run `scripts/cluster/deploy-talos.sh`. It installs Talos, Cilium, and MetalLB with BGP.
+4. Run `python3 scripts/cluster/deploy_talos.py`. It installs Talos, Cilium, and MetalLB with BGP.
 5. Take an etcd snapshot right after bootstrap.
 
 Generated secrets, the kubeconfig, and `deploy.env` are git-ignored. Keep them out of the repo.

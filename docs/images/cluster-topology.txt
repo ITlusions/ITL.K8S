@@ -1,0 +1,20 @@
+                          ITL Talos cluster  -  network topology
+
+                      [ Internet ]
+                           |
+                  NAT 188.213.90.236 -> 10.99.99.27
+                           |
+  ===============================  VLAN 99  10.99.99.0/24  ===============================
+    [Traefik public .27]   [Traefik internal .26]   [CoreDNS .21]   (pool 20-100)
+  ===============================  VLAN 100 10.99.100.0/24  ===============================
+                         BGP AS 64512  <-->  edge-main 10.99.100.1
+                           |                       |
+    [ API VIP .10 ]
+           +-----------------+-----------------+
+    (talos-cp01 .11)    (talos-cp02 .12)
+          control plane + etcd      control plane + etcd
+
+    [talos-w01 .21]   [talos-w02 .22]   [talos-w03 .23]
+       worker            worker            worker
+
+  legend:  public internal control plane worker VIP BGP

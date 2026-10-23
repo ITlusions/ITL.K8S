@@ -1,0 +1,37 @@
+# Internal wildcard certificates via DNS-01, through the TransIP webhook.
+# See docs/1-cluster/1.6-dns.md: this solves the _acme-challenge TXT record in
+# the PUBLIC TransIP zone, even though the wildcard it issues (*.k8s.int.itlusions.nl)
+# is only used internally - that's where Let's Encrypt looks regardless.
+#
+# NOT YET APPLIED. Two things are still placeholders:
+#   1. spec.acme.solvers[0].dns01.webhook.config.accountName - your real TransIP
+#      account/login name.
+#   2. The "transip-secret" Secret this issuer references - doesn't exist yet.
+#      Create it from your TransIP API private key file (never paste the key
+#      itself into chat or commit it to this repo):
+#        kubectl create -n cert-manager secret generic transip-secret \
+#          --from-file=privateKey=/path/to/your/transip-api.key
+#
+# Once both are real, apply with:
+#   kubectl apply -f manifests/cert-manager/letsencrypt-issuer-dns01.yaml
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-issuer-dns01
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@itlusions.com
+    privateKeySecretRef:
+      name: letsencrypt-issuer-dns01
+    solvers:
+      - dns01:
+          webhook:
+            groupName: acme.transip.nl
+            solverName: transip
+            config:
+              accountName: REPLACE_WITH_TRANSIP_ACCOUNT_NAME
+              ttl: 300
+              privateKeySecretRef:
+                name: transip-secret
+                key: privateKey

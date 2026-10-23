@@ -1,0 +1,30 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ha-gen-lh
+  labels:
+    app.kubernetes.io/name: longhorn
+    storage.type: general-ha
+provisioner: driver.longhorn.io
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
+parameters:
+  # Replica Configuration
+  numberOfReplicas: "2"                    # Reduced from 3 to 2 replicas
+  staleReplicaTimeout: "30"                # Same as ha-dbs-lh
+  
+  # Performance & Engine Settings
+  dataEngine: "v1"                         # v1 (default) or v2 (experimental)
+  fsType: "ext4"                           # ext4, ext3, ext2, xfs
+  
+  # Data Locality & Performance
+  dataLocality: "disabled"                 # disabled, best-effort, strict-local
+  
+  # Backup & Recovery
+  fromBackup: ""                           # Restore from backup URL (optional)
+  backupTargetName: "default"              # Backup target to use
+  
+  # Advanced Options
+  disableRevisionCounter: "true"           # Improve performance by disabling revision counter
+  unmapMarkSnapChainRemoved: "ignored"     # ignored, enabled, disabled

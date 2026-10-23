@@ -1,0 +1,17 @@
+# Public-name certificates via HTTP-01, solved through the public Traefik instance.
+# See docs/1-cluster/1.4-ingress.md. The internal instance uses a separate
+# DNS-01 ClusterIssuer (TransIP webhook) for *.k8s.int.itlusions.nl - not this one.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-issuer
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@itlusions.com
+    privateKeySecretRef:
+      name: letsencrypt-issuer-account-key
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: itl-traefik

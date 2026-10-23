@@ -1,0 +1,9 @@
+# Longhorn needs privileged pod security (hostPath, NET_ADMIN, device access
+# for its CSI driver and engine pods), which the cluster's default "baseline"
+# PSA level blocks. This is Longhorn's own documented requirement for Talos.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: longhorn-system
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
