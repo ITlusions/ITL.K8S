@@ -8,6 +8,7 @@ The live design: Talos, Cilium (with Hubble), Tetragon, MetalLB with BGP, Traefi
 
 - [1.1 Architecture](1-cluster/1.1-architecture.md): the node roles, the network, the component versions, and the main diagram.
 - [1.2 Deployment](1-cluster/1.2-deployment.md): build the cluster from scratch, with the checklist, the unattended script, and phase two.
+- [1.3 Capabilities](1-cluster/1.3-capabilities.md): per-node CPU/memory, GPU driver vs. schedulable status, and software versions, confirmed live. Supersedes 0.1.
 - [1.4 Ingress](1-cluster/1.4-ingress.md): the public and internal Traefik instances, the standalone WAF, the names they serve, and the request flow.
 - [1.5 Load balancing and BGP](1-cluster/1.5-loadbalancing-bgp.md): MetalLB pools, BGP sessions, the planned peers, and failure cases.
 - [1.6 DNS hierarchy](1-cluster/1.6-dns.md): the external and internal zones, who writes which records, and the certificates.
@@ -21,6 +22,11 @@ Cilium, Tetragon, Longhorn, Traefik, and metrics-server are each deployed from t
 - [`ITL.Longhorn`](https://github.com/ITlusions/ITL.Longhorn): storage, storage classes, UI Ingress - see its own `docs/` for details.
 - [`ITL.Traefik`](https://github.com/ITlusions/ITL.Traefik): ingress, ACLs, the standalone WAF.
 - [`ITL.K8s.MetricsServer`](https://github.com/ITlusions/ITL.K8s.MetricsServer): `kubectl top` / HPA support.
+- [`ITL.Keycloak.Tenants`](https://github.com/ITlusions/ITL.Keycloak.Tenants): the Keycloak server itself (via the Keycloak Operator), realm/group/client-scope bootstrap automation. Renamed from `ITL.Keycloack.Tenants` 2026-10-24 (typo fix). Per-app OIDC clients (e.g. `ITL.Headscale`, `ITL.Headscale.UI`) are each owned by their own chart instead - see [3.4 Personas and roles](3-authentication/3.4-personas-and-roles.md).
+
+`ITL.AuthGateway` is different from the above: it's a Helm *library* chart other charts depend on, not a wrapper around an upstream chart.
+
+- [`ITL.AuthGateway`](https://github.com/ITlusions/ITL.AuthGateway): reusable Keycloak OIDC forward-auth (`oauth2-proxy` + Traefik `forwardAuth` Middleware + optional `KeycloakOIDCClient`), for wrapping a service into other charts' templates. Unreleased, built for the [Hubble UI OIDC plan](3-authentication/3.3-hubble-ui-oidc-plan.md).
 
 ## 2. Network
 
@@ -30,6 +36,8 @@ Cilium, Tetragon, Longhorn, Traefik, and metrics-server are each deployed from t
 
 - [3.1 GitHub authentication](3-authentication/3.1-github-authentication.md): GitHub login through Keycloak.
 - [3.2 Emergency access](3-authentication/3.2-emergency-access.md): break-glass procedures.
+- [3.3 Hubble UI OIDC plan](3-authentication/3.3-hubble-ui-oidc-plan.md): internal exposure and Keycloak login for Hubble UI. Planned, not yet implemented.
+- [3.4 Personas and roles](3-authentication/3.4-personas-and-roles.md): who gets what, mapped to Keycloak groups and each app's role model. Draft, no real people assigned yet.
 
 ## 4. Storage
 
